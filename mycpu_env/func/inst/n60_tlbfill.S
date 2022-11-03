@@ -3,6 +3,17 @@
 #include "inst_test.h"
 
 LEAF(n60_tlbfill_test)
+### disable trace comp
+    li.w        t0, OPEN_TRACE_ADDR 
+    li.w        t1, CONFREG_NULL 
+    st.w        zero, t1, 0 
+    st.w        zero, t1, 0  
+    st.w        zero, t0, 0
+    st.w        zero, t1, 0 
+    st.w        zero, t1, 0   
+    ld.w        zero, t1, 0
+    ld.w        t0, t0, 0
+
     addi.w s0, s0 ,0x1
 	li.w     s2, 0x0
 
@@ -47,7 +58,18 @@ LEAF(n60_tlbfill_test)
 ###score ++
     addi.w s3, s3, 1
 ###output (s0<<24)|s3
-inst_error:  
+inst_error: 
+### enable trace comp 
+    li.w        t0, OPEN_TRACE_ADDR 
+    li.w        t1, CONFREG_NULL
+    st.w        zero, t1, 0 
+    st.w        zero, t1, 0  
+    st.w        t0, t0, 0
+    st.w        zero, t1, 0 
+    st.w        zero, t1, 0  
+    ld.w        zero, t1, 0
+    ld.w        t0, t0, 0 
+
     slli.w t1, s0, 24
     or t0, t1, s3 
     st.w t0, s1, 0x0
