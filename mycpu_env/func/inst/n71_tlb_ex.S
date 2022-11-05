@@ -39,7 +39,7 @@ LEAF(n71_tlb_ex_test)
     li.w        t1, 0xffffe000
     and       t4, t0, t1
     srli.w    t4, t4, 0x4 
-    li.w        t1, 0x5d
+    li.w        t1, 0x5f
     or        t1, t4, t1
     li.w        t2, 0x14d
     or        t2, t4, t2
