@@ -167,3 +167,25 @@
     li.w    t1, 0x1; \
     bne   t2, t1, inst_error
 
+#define GET_ECODE\
+    csrrd    t0, csr_estat;\
+    srli.w   t0, t0, 16;\
+    li.w     t1, 0x3f;\
+    and      t0, t0, t1;
+
+#define GET_ESUBCODE\
+    csrrd    t0, csr_estat;\
+    srli.w   t0, t0, 22;\
+    li.w     t1, 0x1ff;\
+    and      t0, t0, t1;
+
+#define CHECK_ECODE(ecode)\
+    GET_ECODE\
+    li.w     t1, ecode;\
+    bne      t0, t1, ex_finish;
+
+#define CHECK_ESUBCODE(esubcode)\
+    GET_ESUBCODE\
+    li.w     t1, esubcode;\
+    bne      t0, t1, ex_finish;
+

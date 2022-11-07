@@ -106,11 +106,7 @@ syscall_ex:
     add.w    s2, zero, zero
     csrrd    t0, csr_era 
     bne      s4, t0, ex_finish 
-    csrrd    t0, csr_estat 
-    li.w       t1, 0x7fff0000 
-    and      t0, t0, t1 
-    li.w       t1, 0x000b0000 
-    bne      t1, t0, ex_finish 
+    CHECK_ECODE(SYS)
     csrrd    t0, csr_crmd 
     li.w       t1, 0x7 
     and      t0, t0, t1 
@@ -127,11 +123,7 @@ brk_ex:
     add.w    s2, zero, zero
     csrrd    t0, csr_era 
     bne      s4, t0, ex_finish 
-    csrrd    t0, csr_estat 
-    li.w       t1, 0x7fff0000 
-    and      t0, t0, t1 
-    li.w       t1, 0x000c0000 
-    bne      t1, t0, ex_finish 
+    CHECK_ECODE(BRK)
     csrrd    t0, csr_crmd 
     li.w       t1, 0x7 
     and      t0, t0, t1 
@@ -148,11 +140,7 @@ ine_ex:
     add.w    s2, zero, zero
     csrrd    t0, csr_era 
     bne      s4, t0, ex_finish 
-    csrrd    t0, csr_estat 
-    li.w       t1, 0x7fff0000 
-    and      t0, t0, t1 
-    li.w       t1, 0xd0000 
-    bne      t1, t0, ex_finish 
+    CHECK_ECODE(INE)
     csrrd    t0, csr_crmd 
     li.w       t1, 0x7 
     and      t0, t0, t1 
@@ -169,11 +157,7 @@ int_ex:
     add.w    s2, zero, zero
     csrrd    t0, csr_era 
     bne      s4, t0, ex_finish 
-    csrrd    t0, csr_estat 
-    li.w       t1, 0x7fff0000 
-    and      t0, t0, t1 
-    li.w       t1, 0x00000000 
-    bne      t1, t0, ex_finish 
+    CHECK_ECODE(INT)
     csrrd    t0, csr_crmd 
     li.w       t1, 0x7 
     and      t0, t0, t1 
@@ -200,11 +184,8 @@ adef_ex:
     add.w    s2, zero, zero
     csrwr    s5, csr_era
     bne      s4, s5, ex_finish 
-    csrrd    t0, csr_estat 
-    li.w       t1, 0x7fff0000 
-    and      t0, t0, t1 
-    li.w       t1, 0x00080000 
-    bne      t1, t0, ex_finish 
+    CHECK_ECODE   (ADE)
+    CHECK_ESUBCODE(ADEF_SUBCODE)
     csrrd    t0, csr_crmd 
     li.w       t1, 0x7 
     and      t0, t0, t1 
@@ -221,11 +202,7 @@ ale_ex:
     add.w    s2, zero, zero
     csrrd    t0, csr_era 
     bne      s4, t0, ex_finish 
-    csrrd    t0, csr_estat 
-    li.w       t1, 0x7fff0000 
-    and      t0, t0, t1 
-    li.w       t1, 0x00090000 
-    bne      t1, t0, ex_finish 
+    CHECK_ECODE(ALE)
     csrrd    t0, csr_crmd 
     li.w       t1, 0x7 
     and      t0, t0, t1 
@@ -242,10 +219,7 @@ pme_ex:
     add.w    s2, zero, zero 
     csrrd    t0, csr_era 
     bne      s4, t0, ex_finish 
-    csrrd    t0, csr_estat 
-    li.w       t1, 0x7fff0000 
-    and      t0, t0, t1 
-    li.w       t1, 0x00040000
+    CHECK_ECODE(PME)
     csrrd    t0, csr_crmd 
     li.w       t1, 0x7 
     and      t0, t0, t1 
@@ -268,11 +242,7 @@ ld_page_invalid:
     add.w    s2, zero, zero
     csrrd    t0, csr_era 
     bne      s4, t0, ex_finish 
-    csrrd    t0, csr_estat 
-    li.w       t1, 0x7fff0000 
-    and      t0, t0, t1 
-    li.w       t1, 0x00010000 
-    bne      t1, t0, ex_finish 
+    CHECK_ECODE(PIL)
     csrrd    t0, csr_crmd 
     li.w       t1, 0x7 
     and      t0, t0, t1 
@@ -293,11 +263,7 @@ st_page_invalid:
     add.w    s2, zero, zero
     csrrd    t0, csr_era 
     bne      s4, t0, ex_finish 
-    csrrd    t0, csr_estat 
-    li.w       t1, 0x7fff0000 
-    and      t0, t0, t1 
-    li.w       t1, 0x00020000 
-    bne      t1, t0, ex_finish 
+    CHECK_ECODE(PIS)
     csrrd    t0, csr_crmd 
     li.w       t1, 0x7 
     and      t0, t0, t1 
@@ -318,11 +284,7 @@ tlb_prl_error:
     add.w    s2, zero, zero
     csrrd    t0, csr_era 
     bne      s4, t0, ex_finish 
-    csrrd    t0, csr_estat 
-    li.w       t1, 0x7fff0000 
-    and      t0, t0, t1 
-    li.w       t1, 0x00070000 
-    bne      t1, t0, ex_finish 
+    CHECK_ECODE(PPI)
     csrrd    t0, csr_crmd 
     li.w       t1, 0x7 
     and      t0, t0, t1 
@@ -343,6 +305,7 @@ tlb_page_modified_error:
     add.w    s2, zero, zero
     csrrd    t0, csr_era 
     bne      s4, t0, ex_finish 
+    CHECK_ECODE(PME)
     csrrd    t0, csr_estat 
     li.w       t1, 0x7fff0000 
     and      t0, t0, t1 
@@ -371,11 +334,7 @@ fetch_page_invalid:
     bne      s8, t0, ex_finish 
     addi.w   t0, s4, 0x0
     csrwr    t0, csr_era
-    csrrd    t0, csr_estat 
-    li.w       t1, 0x7fff0000 
-    and      t0, t0, t1 
-    li.w       t1, 0x00030000 
-    bne      t1, t0, ex_finish 
+    CHECK_ECODE(PIF)
     csrrd    t0, csr_crmd 
     li.w       t1, 0x7 
     and      t0, t0, t1 
@@ -396,11 +355,8 @@ tlb_adem_error:
     add.w    s2, zero, zero
     csrrd    t0, csr_era 
     bne      s4, t0, ex_finish 
-    csrrd    t0, csr_estat 
-    li.w       t1, 0x7fff0000 
-    and      t0, t0, t1 
-    li.w       t1, 0x00480000 
-    bne      t1, t0, ex_finish 
+    CHECK_ECODE   (ADE         )
+    CHECK_ESUBCODE(ADEM_SUBCODE)
     csrrd    t0, csr_crmd 
     li.w       t1, 0x7 
     and      t0, t0, t1 
@@ -423,11 +379,8 @@ tlb_adef_error:
     bne      s8, t0, ex_finish 
     addi.w   t0, s4, 0x0
     csrwr    t0, csr_era
-    csrrd    t0, csr_estat 
-    li.w       t1, 0x7fff0000 
-    and      t0, t0, t1 
-    li.w       t1, 0x00080000 
-    bne      t1, t0, ex_finish 
+    CHECK_ECODE   (ADE         )
+    CHECK_ESUBCODE(ADEF_SUBCODE)
     csrrd    t0, csr_crmd 
     li.w       t1, 0x7 
     and      t0, t0, t1 
