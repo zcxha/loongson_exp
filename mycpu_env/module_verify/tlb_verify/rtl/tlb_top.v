@@ -132,7 +132,7 @@ tlb #(.TLBNUM(16)) tlb (
     .s1_d        (s1_d       ),
     .s1_v        (s1_v       ),
 
-    .invtlb_valid(1'b0)
+    .invtlb_valid(1'b0       ),
     .invtlb_op   (5'd0       ),
 
     .we          (we         ),
