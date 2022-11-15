@@ -59,6 +59,12 @@ LEAF(n60_tlbfill_test)
     addi.w s3, s3, 1
 ###output (s0<<24)|s3
 inst_error: 
+### clear tlb-related CSR
+    csrwr  zero, csr_tlbidx
+    csrwr  zero, csr_tlbehi
+    csrwr  zero, csr_tlbelo0
+    csrwr  zero, csr_tlbelo1
+
 ### enable trace comp 
     li.w        t0, OPEN_TRACE_ADDR 
     li.w        t1, CONFREG_NULL
