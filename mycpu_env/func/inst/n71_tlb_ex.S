@@ -62,7 +62,7 @@ LEAF(n71_tlb_ex_test)
     FILL_TLB_ITEM_r
   
     //set datm=1
-    li.w      t0, 0x80 
+    li.w      t0, 0xa0 
     li.w      t1, 0x180
     csrxchg t0, t1, csr_crmd
 
