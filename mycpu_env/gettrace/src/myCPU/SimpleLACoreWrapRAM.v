@@ -49,7 +49,6 @@ module SimpleLACore(
   reg [1:0] csrs_1_PPLV; 
   reg  csrs_2_FPE; 
   reg [12:0] csrs_3_LIE; 
-  reg [8:0] csrs_4_EsubCode; 
   reg [5:0] csrs_4_Ecode; 
   reg  csrs_4_IS_0; 
   reg  csrs_4_IS_1; 
@@ -120,11 +119,9 @@ module SimpleLACore(
   wire [12:0] _INT_T_1 = csrs_3_LIE & _INT_T; 
   wire  INT = |_INT_T_1 & crmd_IE; 
   wire  _T_28 = ~idle; 
+  wire  _T_31 = PC[1:0] != 2'h0; 
   wire  _T_12 = crmd_PLV == 2'h0; 
   wire  _T_14 = crmd_PLV == 2'h3; 
-  wire  _GEN_8 = PC[31:29] == csrs_28_VSEG & (csrs_28_PLV0 & _T_12 | csrs_28_PLV3 & _T_14) ? 1'h0 : _T_14 & PC[31]; 
-  wire  ade = PC[31:29] == csrs_27_VSEG & (csrs_27_PLV0 & crmd_PLV == 2'h0 | csrs_27_PLV3 & crmd_PLV == 2'h3) ? 1'h0 :
-    _GEN_8; 
   reg  tlb_0_E; 
   reg [18:0] tlb_0_VPPN; 
   reg [5:0] tlb_0_PS; 
@@ -258,8 +255,7 @@ module SimpleLACore(
     tlbHit_11 | tlbHit_12 | tlbHit_13 | tlbHit_14 | tlbHit_15); 
   wire  miss = PC[31:29] == csrs_27_VSEG & (csrs_27_PLV0 & crmd_PLV == 2'h0 | csrs_27_PLV3 & crmd_PLV == 2'h3) ? 1'h0 :
     _GEN_9; 
-  wire  _GEN_30 = ade ? 1'h0 : miss; 
-  wire  _GEN_36 = crmd_DA ? 1'h0 : _GEN_30; 
+  wire  _GEN_36 = crmd_DA ? 1'h0 : miss; 
   wire  _GEN_41 = PC[1:0] != 2'h0 ? 1'h0 : _GEN_36; 
   wire  _GEN_49 = ~INT & ~idle & _GEN_41; 
   wire  _GEN_56 = dStallReg | iStallReg ? 1'h0 : _GEN_49; 
@@ -444,8 +440,7 @@ module SimpleLACore(
   wire  _GEN_21 = ppi ? 1'h0 : 1'h1; 
   wire  _GEN_24 = invalid ? 1'h0 : _GEN_21; 
   wire  _GEN_28 = miss ? 1'h0 : _GEN_24; 
-  wire  _GEN_33 = ade ? 1'h0 : _GEN_28; 
-  wire  _GEN_34 = crmd_DA | _GEN_33; 
+  wire  _GEN_34 = crmd_DA | _GEN_28; 
   wire  _GEN_40 = PC[1:0] != 2'h0 ? 1'h0 : _GEN_34; 
   wire  _GEN_48 = ~INT & ~idle & _GEN_40; 
   wire  IF_OK = dStallReg | iStallReg | _GEN_48; 
@@ -1099,8 +1094,7 @@ module SimpleLACore(
   wire [31:0] _aluOut_T_81 = _aluOut_T_55 ? _aluOut_T_57[31:0] : 32'h0; 
   wire [31:0] _aluOut_T_99 = _aluOut_T_98 | _aluOut_T_81; 
   wire  _aluOut_T_59 = func == 5'h11; 
-  wire [31:0] _GEN_14 = aluOp1 % _GEN_77; 
-  wire [31:0] _aluOut_T_60 = _GEN_14[31:0]; 
+  wire [31:0] _aluOut_T_60 = aluOp1 % _GEN_77; 
   wire [31:0] _aluOut_T_82 = _aluOut_T_59 ? _aluOut_T_60 : 32'h0; 
   wire [31:0] _aluOut_T_100 = _aluOut_T_99 | _aluOut_T_82; 
   wire  _aluOut_T_62 = func == 5'h12; 
@@ -1116,9 +1110,6 @@ module SimpleLACore(
   wire [31:0] _EXVA_T_7 = _EXVA_T_4 | _EXVA_T_5; 
   wire [31:0] _EXVA_T_6 = _INE_T_1 ? rkd : 32'h0; 
   wire [31:0] EXVA = _EXVA_T_7 | _EXVA_T_6; 
-  wire  _GEN_80 = EXVA[31:29] == csrs_28_VSEG & (csrs_28_PLV0 & _T_12 | csrs_28_PLV3 & _T_14) ? 1'h0 : _T_14 & EXVA[31]; 
-  wire  ade_1 = EXVA[31:29] == csrs_27_VSEG & (csrs_27_PLV0 & crmd_PLV == 2'h0 | csrs_27_PLV3 & crmd_PLV == 2'h3) ? 1'h0
-     : _GEN_80; 
   wire  vaMatch_0_1 = tlb_0_VPPN[18:10] == EXVA[31:23] & (tlb_0_PS == 6'h16 | tlb_0_VPPN[9:0] == EXVA[22:13]); 
   wire [9:0] EXASID = _INE_T_1 ? rj[9:0] : asid_ASID; 
   wire  asidMatch_0_1 = tlb_0_ASID == EXASID; 
@@ -1231,8 +1222,7 @@ module SimpleLACore(
   wire  c0_12 = _T_35 ? 1'h0 : _T_1315; 
   wire  _TLBR_T = ~c0_12; 
   wire  _GEN_112 = miss_1 ? ~c0_12 : _GEN_56; 
-  wire  _GEN_120 = ade_1 ? _GEN_56 : _GEN_112; 
-  wire  _GEN_129 = crmd_DA ? _GEN_56 : _GEN_120; 
+  wire  _GEN_129 = crmd_DA ? _GEN_56 : _GEN_112; 
   wire  _GEN_138 = memALE ? _GEN_56 : _GEN_129; 
   wire  _GEN_147 = c0_3 == 3'h7 | c0_11 & d[4:3] != 2'h2 ? _GEN_56 : _GEN_138; 
   wire  _GEN_159 = ID_OK ? _GEN_147 : _GEN_56; 
@@ -1242,16 +1232,8 @@ module SimpleLACore(
   wire  _GEN_157 = ID_OK & _GEN_145; 
   wire  ALE = dStallReg ? 1'h0 : _GEN_157; 
   wire [7:0] excp_lo = {ALE,SYS,BRK,INE,2'h0,1'h0,TLBR}; 
-  wire  _GEN_35 = crmd_DA ? 1'h0 : ade; 
-  wire  _GEN_39 = PC[1:0] != 2'h0 | _GEN_35; 
-  wire  _GEN_47 = ~INT & ~idle & _GEN_39; 
+  wire  _GEN_47 = ~INT & ~idle & _T_31; 
   wire  ADEF = dStallReg | iStallReg ? 1'h0 : _GEN_47; 
-  wire  _GEN_119 = ade_1 & _TLBR_T; 
-  wire  _GEN_128 = crmd_DA ? 1'h0 : _GEN_119; 
-  wire  _GEN_137 = memALE ? 1'h0 : _GEN_128; 
-  wire  _GEN_146 = c0_3 == 3'h7 | c0_11 & d[4:3] != 2'h2 ? 1'h0 : _GEN_137; 
-  wire  _GEN_158 = ID_OK & _GEN_146; 
-  wire  ADEM = dStallReg ? 1'h0 : _GEN_158; 
   wire [5:0] _foundTLB_T_868 = tlbHit_0_1 ? tlb_0_PS : 6'h0; 
   wire [5:0] _foundTLB_T_869 = tlbHit_1_1 ? tlb_1_PS : 6'h0; 
   wire [5:0] _foundTLB_T_884 = _foundTLB_T_868 | _foundTLB_T_869; 
@@ -1467,24 +1449,21 @@ module SimpleLACore(
   wire  _GEN_103 = ppi_1 ? 1'h0 : _GEN_99; 
   wire  _GEN_109 = invalid_1 ? 1'h0 : _GEN_103; 
   wire  _GEN_116 = miss_1 ? 1'h0 : _GEN_109; 
-  wire  _GEN_124 = ade_1 ? 1'h0 : _GEN_116; 
-  wire  _GEN_133 = crmd_DA ? 1'h0 : _GEN_124; 
+  wire  _GEN_133 = crmd_DA ? 1'h0 : _GEN_116; 
   wire  _GEN_142 = memALE ? 1'h0 : _GEN_133; 
   wire  _GEN_151 = c0_3 == 3'h7 | c0_11 & d[4:3] != 2'h2 ? 1'h0 : _GEN_142; 
   wire  _GEN_163 = ID_OK & _GEN_151; 
   wire  PME = dStallReg ? 1'h0 : _GEN_163; 
   wire  _GEN_23 = invalid ? 1'h0 : ppi; 
   wire  _GEN_27 = miss ? 1'h0 : _GEN_23; 
-  wire  _GEN_32 = ade ? 1'h0 : _GEN_27; 
-  wire  _GEN_38 = crmd_DA ? 1'h0 : _GEN_32; 
+  wire  _GEN_38 = crmd_DA ? 1'h0 : _GEN_27; 
   wire  _GEN_43 = PC[1:0] != 2'h0 ? 1'h0 : _GEN_38; 
   wire  _GEN_51 = ~INT & ~idle & _GEN_43; 
   wire  _GEN_58 = dStallReg | iStallReg ? 1'h0 : _GEN_51; 
   wire  _GEN_102 = ppi_1 ? _TLBR_T : _GEN_58; 
   wire  _GEN_108 = invalid_1 ? _GEN_58 : _GEN_102; 
   wire  _GEN_115 = miss_1 ? _GEN_58 : _GEN_108; 
-  wire  _GEN_123 = ade_1 ? _GEN_58 : _GEN_115; 
-  wire  _GEN_132 = crmd_DA ? _GEN_58 : _GEN_123; 
+  wire  _GEN_132 = crmd_DA ? _GEN_58 : _GEN_115; 
   wire  _GEN_141 = memALE ? _GEN_58 : _GEN_132; 
   wire  _GEN_150 = c0_3 == 3'h7 | c0_11 & d[4:3] != 2'h2 ? _GEN_58 : _GEN_141; 
   wire  _GEN_162 = ID_OK ? _GEN_150 : _GEN_58; 
@@ -1492,28 +1471,25 @@ module SimpleLACore(
   wire  _GEN_97 = c0_2[0] & _TLBR_T; 
   wire  _GEN_106 = invalid_1 & _GEN_97; 
   wire  _GEN_113 = miss_1 ? 1'h0 : _GEN_106; 
-  wire  _GEN_121 = ade_1 ? 1'h0 : _GEN_113; 
-  wire  _GEN_130 = crmd_DA ? 1'h0 : _GEN_121; 
+  wire  _GEN_130 = crmd_DA ? 1'h0 : _GEN_113; 
   wire  _GEN_139 = memALE ? 1'h0 : _GEN_130; 
   wire  _GEN_148 = c0_3 == 3'h7 | c0_11 & d[4:3] != 2'h2 ? 1'h0 : _GEN_139; 
   wire  _GEN_160 = ID_OK & _GEN_148; 
   wire  PIS = dStallReg ? 1'h0 : _GEN_160; 
   wire  _GEN_26 = miss ? 1'h0 : invalid; 
-  wire  _GEN_31 = ade ? 1'h0 : _GEN_26; 
-  wire  _GEN_37 = crmd_DA ? 1'h0 : _GEN_31; 
+  wire  _GEN_37 = crmd_DA ? 1'h0 : _GEN_26; 
   wire  _GEN_42 = PC[1:0] != 2'h0 ? 1'h0 : _GEN_37; 
   wire  _GEN_50 = ~INT & ~idle & _GEN_42; 
   wire  PIF = dStallReg | iStallReg ? 1'h0 : _GEN_50; 
   wire  _GEN_98 = c0_2[0] ? 1'h0 : _TLBR_T; 
   wire  _GEN_107 = invalid_1 & _GEN_98; 
   wire  _GEN_114 = miss_1 ? 1'h0 : _GEN_107; 
-  wire  _GEN_122 = ade_1 ? 1'h0 : _GEN_114; 
-  wire  _GEN_131 = crmd_DA ? 1'h0 : _GEN_122; 
+  wire  _GEN_131 = crmd_DA ? 1'h0 : _GEN_114; 
   wire  _GEN_140 = memALE ? 1'h0 : _GEN_131; 
   wire  _GEN_149 = c0_3 == 3'h7 | c0_11 & d[4:3] != 2'h2 ? 1'h0 : _GEN_140; 
   wire  _GEN_161 = ID_OK & _GEN_149; 
   wire  PIL = dStallReg ? 1'h0 : _GEN_161; 
-  wire [15:0] _excp_T = {INT,PIL,PIS,PIF,PME,PPI,ADEF,ADEM,excp_lo}; 
+  wire [15:0] _excp_T = {INT,PIL,PIS,PIF,PME,PPI,ADEF,1'h0,excp_lo}; 
   wire  excp = |_excp_T; 
   reg [19:0] tlb_0_P0_PPN; 
   reg [1:0] tlb_0_P0_MAT; 
@@ -1930,14 +1906,13 @@ module SimpleLACore(
   wire [3:0] _GEN_93 = 2'h1 == c0_3[2:1] ? 4'h3 : 4'h1; 
   wire [3:0] _GEN_94 = 2'h2 == c0_3[2:1] ? 4'hf : _GEN_93; 
   wire [3:0] _GEN_95 = 2'h3 == c0_3[2:1] ? 4'h0 : _GEN_94; 
-  wire [6:0] _GEN_12 = {{3'd0}, _GEN_95}; 
-  wire [6:0] memMask = _GEN_12 << aluOut[1:0]; 
+  wire [6:0] _GEN_8 = {{3'd0}, _GEN_95}; 
+  wire [6:0] memMask = _GEN_8 << aluOut[1:0]; 
   wire  _GEN_100 = pme_1 & c0_2[0] ? c0_12 : 1'h1; 
   wire  _GEN_104 = ppi_1 ? c0_12 : _GEN_100; 
   wire  _GEN_110 = invalid_1 ? c0_12 : _GEN_104; 
   wire  _GEN_117 = miss_1 ? c0_12 : _GEN_110; 
-  wire  _GEN_125 = ade_1 ? c0_12 : _GEN_117; 
-  wire  _GEN_127 = crmd_DA | _GEN_125; 
+  wire  _GEN_127 = crmd_DA | _GEN_117; 
   wire  _GEN_136 = memALE ? c0_12 : _GEN_127; 
   wire  _GEN_144 = c0_3 == 3'h7 | c0_11 & d[4:3] != 2'h2 | _GEN_136; 
   wire  _GEN_156 = ID_OK & _GEN_144; 
@@ -1946,8 +1921,7 @@ module SimpleLACore(
   wire  _GEN_105 = ppi_1 ? c0_12 : _GEN_101; 
   wire  _GEN_111 = invalid_1 ? c0_12 : _GEN_105; 
   wire  _GEN_118 = miss_1 ? c0_12 : _GEN_111; 
-  wire  _GEN_126 = ade_1 ? c0_12 : _GEN_118; 
-  wire  _GEN_134 = crmd_DA ? c0_12 : _GEN_126; 
+  wire  _GEN_134 = crmd_DA ? c0_12 : _GEN_118; 
   wire  _GEN_143 = memALE ? c0_12 : _GEN_134; 
   wire  _GEN_152 = c0_3 == 3'h7 | c0_11 & d[4:3] != 2'h2 ? c0_12 : _GEN_143; 
   wire  _GEN_164 = ID_OK ? _GEN_152 : c0_12; 
@@ -1955,8 +1929,8 @@ module SimpleLACore(
   wire  _io_data_req_bits_wen_T_1 = c0_2 == 2'h3; 
   wire [6:0] _io_data_req_bits_wen_T_4 = c0_2 == 2'h1 | c0_2 == 2'h3 & csrs_25_ROLLB ? memMask : 7'h0; 
   wire [4:0] _io_data_req_bits_wdata_T_1 = {aluOut[1:0], 3'h0}; 
-  wire [62:0] _GEN_13 = {{31'd0}, rkd}; 
-  wire [62:0] _io_data_req_bits_wdata_T_2 = _GEN_13 << _io_data_req_bits_wdata_T_1; 
+  wire [62:0] _GEN_12 = {{31'd0}, rkd}; 
+  wire [62:0] _io_data_req_bits_wdata_T_2 = _GEN_12 << _io_data_req_bits_wdata_T_1; 
   wire [31:0] shiftData = io_data_resp_bits >> _io_data_req_bits_wdata_T_1; 
   wire  _extendData_T = c0_3 == 3'h0; 
   wire [23:0] _extendData_T_3 = shiftData[7] ? 24'hffffff : 24'h0; 
@@ -1978,7 +1952,7 @@ module SimpleLACore(
   wire [31:0] _extendData_T_25 = _extendData_T_24 | _extendData_T_21; 
   wire [31:0] _extendData_T_26 = _extendData_T_25 | _extendData_T_22; 
   wire [31:0] extendData = _extendData_T_26 | _extendData_T_23; 
-  wire [18:0] _GEN_153 = ~ALE & ~ADEM ? aluOut[31:13] : _GEN_60; 
+  wire [18:0] _GEN_153 = ~ALE ? aluOut[31:13] : _GEN_60; 
   wire [31:0] _GEN_154 = ~mem_OK ? aluOut : _GEN_59; 
   wire [18:0] _GEN_155 = ~mem_OK ? _GEN_153 : _GEN_60; 
   wire [31:0] _GEN_165 = ID_OK ? _GEN_154 : _GEN_59; 
@@ -1998,8 +1972,7 @@ module SimpleLACore(
   wire  _csrRD_T_6 = 14'h5 == inst[23:10]; 
   wire [7:0] csrRD_lo_1 = {csrs_4_IS_7,csrs_4_IS_6,csrs_4_IS_5,csrs_4_IS_4,csrs_4_IS_3,csrs_4_IS_2,csrs_4_IS_1,
     csrs_4_IS_0}; 
-  wire [30:0] _csrRD_T_7 = {csrs_4_EsubCode,csrs_4_Ecode,3'h0,csrs_4_IS_12,csrs_4_IS_11,1'h0,csrs_4_IS_9,csrs_4_IS_8,
-    csrRD_lo_1}; 
+  wire [30:0] _csrRD_T_7 = {9'h0,csrs_4_Ecode,3'h0,csrs_4_IS_12,csrs_4_IS_11,1'h0,csrs_4_IS_9,csrs_4_IS_8,csrRD_lo_1}; 
   wire  _csrRD_T_8 = 14'h6 == inst[23:10]; 
   wire  _csrRD_T_9 = 14'h7 == inst[23:10]; 
   wire  _csrRD_T_10 = 14'hc == inst[23:10]; 
@@ -2102,15 +2075,15 @@ module SimpleLACore(
   wire [31:0] _GEN_2366 = {{23'd0}, _csrRD_T_1}; 
   wire [31:0] _crmd_T_3 = _GEN_2366 & _crmd_T_2; 
   wire [31:0] _crmd_T_4 = _crmd_T | _crmd_T_3; 
-  wire [1:0] _GEN_180 = _csrRD_T ? _crmd_T_4[1:0] : crmd_PLV; 
-  wire  _GEN_181 = _csrRD_T ? _crmd_T_4[2] : crmd_IE; 
-  wire  _GEN_182 = _csrRD_T ? _crmd_T_4[3] : crmd_DA; 
-  wire  _GEN_183 = _csrRD_T ? _crmd_T_4[4] : crmd_PG; 
+  wire  _GEN_182 = _csrRD_T ? _crmd_T_4[4] : crmd_PG; 
+  wire  _GEN_183 = _csrRD_T ? _crmd_T_4[3] : crmd_DA; 
+  wire  _GEN_184 = _csrRD_T ? _crmd_T_4[2] : crmd_IE; 
+  wire [1:0] _GEN_185 = _csrRD_T ? _crmd_T_4[1:0] : crmd_PLV; 
   wire [31:0] _GEN_2367 = {{29'd0}, _csrRD_T_3}; 
   wire [31:0] _prmd_T_3 = _GEN_2367 & _crmd_T_2; 
   wire [31:0] _prmd_T_4 = _crmd_T | _prmd_T_3; 
-  wire [1:0] _GEN_186 = _csrRD_T_2 ? _prmd_T_4[1:0] : csrs_1_PPLV; 
-  wire  _GEN_187 = _csrRD_T_2 ? _prmd_T_4[2] : csrs_1_PIE; 
+  wire  _GEN_186 = _csrRD_T_2 ? _prmd_T_4[2] : csrs_1_PIE; 
+  wire [1:0] _GEN_187 = _csrRD_T_2 ? _prmd_T_4[1:0] : csrs_1_PPLV; 
   wire [31:0] _GEN_2368 = {{31'd0}, csrs_2_FPE}; 
   wire [31:0] _euen_T_2 = _GEN_2368 & _crmd_T_2; 
   wire [31:0] _euen_T_3 = _crmd_T | _euen_T_2; 
@@ -2148,22 +2121,22 @@ module SimpleLACore(
   wire [23:0] _tlbelo0_PPN_T_1 = ~csrMask[31:8]; 
   wire [23:0] _tlbelo0_PPN_T_2 = csrs_10_PPN & _tlbelo0_PPN_T_1; 
   wire [23:0] _tlbelo0_PPN_T_3 = _tlbelo0_PPN_T | _tlbelo0_PPN_T_2; 
-  wire  _GEN_201 = _csrRD_T_16 ? _tlbelo0_T_4[0] : csrs_10_V; 
-  wire  _GEN_202 = _csrRD_T_16 ? _tlbelo0_T_4[1] : csrs_10_D; 
-  wire [1:0] _GEN_203 = _csrRD_T_16 ? _tlbelo0_T_4[3:2] : csrs_10_PLV; 
-  wire [1:0] _GEN_204 = _csrRD_T_16 ? _tlbelo0_T_4[5:4] : csrs_10_MAT; 
-  wire  _GEN_205 = _csrRD_T_16 ? _tlbelo0_T_4[6] : csrs_10_G; 
-  wire [23:0] _GEN_206 = _csrRD_T_16 ? _tlbelo0_PPN_T_3 : csrs_10_PPN; 
+  wire [23:0] _GEN_201 = _csrRD_T_16 ? _tlbelo0_PPN_T_3 : csrs_10_PPN; 
+  wire  _GEN_202 = _csrRD_T_16 ? _tlbelo0_T_4[6] : csrs_10_G; 
+  wire [1:0] _GEN_203 = _csrRD_T_16 ? _tlbelo0_T_4[5:4] : csrs_10_MAT; 
+  wire [1:0] _GEN_204 = _csrRD_T_16 ? _tlbelo0_T_4[3:2] : csrs_10_PLV; 
+  wire  _GEN_205 = _csrRD_T_16 ? _tlbelo0_T_4[1] : csrs_10_D; 
+  wire  _GEN_206 = _csrRD_T_16 ? _tlbelo0_T_4[0] : csrs_10_V; 
   wire [31:0] _tlbelo1_T_3 = _csrRD_T_19 & _crmd_T_2; 
   wire [31:0] _tlbelo1_T_4 = _crmd_T | _tlbelo1_T_3; 
   wire [23:0] _tlbelo1_PPN_T_2 = csrs_11_PPN & _tlbelo0_PPN_T_1; 
   wire [23:0] _tlbelo1_PPN_T_3 = _tlbelo0_PPN_T | _tlbelo1_PPN_T_2; 
-  wire  _GEN_207 = _csrRD_T_18 ? _tlbelo1_T_4[0] : csrs_11_V; 
-  wire  _GEN_208 = _csrRD_T_18 ? _tlbelo1_T_4[1] : csrs_11_D; 
-  wire [1:0] _GEN_209 = _csrRD_T_18 ? _tlbelo1_T_4[3:2] : csrs_11_PLV; 
-  wire [1:0] _GEN_210 = _csrRD_T_18 ? _tlbelo1_T_4[5:4] : csrs_11_MAT; 
-  wire  _GEN_211 = _csrRD_T_18 ? _tlbelo1_T_4[6] : csrs_11_G; 
-  wire [23:0] _GEN_212 = _csrRD_T_18 ? _tlbelo1_PPN_T_3 : csrs_11_PPN; 
+  wire [23:0] _GEN_207 = _csrRD_T_18 ? _tlbelo1_PPN_T_3 : csrs_11_PPN; 
+  wire  _GEN_208 = _csrRD_T_18 ? _tlbelo1_T_4[6] : csrs_11_G; 
+  wire [1:0] _GEN_209 = _csrRD_T_18 ? _tlbelo1_T_4[5:4] : csrs_11_MAT; 
+  wire [1:0] _GEN_210 = _csrRD_T_18 ? _tlbelo1_T_4[3:2] : csrs_11_PLV; 
+  wire  _GEN_211 = _csrRD_T_18 ? _tlbelo1_T_4[1] : csrs_11_D; 
+  wire  _GEN_212 = _csrRD_T_18 ? _tlbelo1_T_4[0] : csrs_11_V; 
   wire [9:0] _asid_ASID_T = rkd[9:0] & csrMask[9:0]; 
   wire [9:0] _asid_ASID_T_1 = ~csrMask[9:0]; 
   wire [9:0] _asid_ASID_T_2 = asid_ASID & _asid_ASID_T_1; 
@@ -2218,29 +2191,29 @@ module SimpleLACore(
   wire [2:0] _dmw1_PSEG_T_3 = _dmw0_PSEG_T | _dmw1_PSEG_T_2; 
   wire [2:0] _dmw1_VSEG_T_2 = csrs_28_VSEG & _dmw0_VSEG_T_1; 
   wire [2:0] _dmw1_VSEG_T_3 = _dmw0_VSEG_T | _dmw1_VSEG_T_2; 
-  wire [1:0] _GEN_246 = ID_OK & c0_4 & |csrMask ? _GEN_180 : crmd_PLV; 
-  wire  _GEN_247 = ID_OK & c0_4 & |csrMask ? _GEN_181 : crmd_IE; 
-  wire  _GEN_248 = ID_OK & c0_4 & |csrMask ? _GEN_182 : crmd_DA; 
-  wire  _GEN_249 = ID_OK & c0_4 & |csrMask ? _GEN_183 : crmd_PG; 
-  wire [1:0] _GEN_252 = ID_OK & c0_4 & |csrMask ? _GEN_186 : csrs_1_PPLV; 
-  wire  _GEN_253 = ID_OK & c0_4 & |csrMask ? _GEN_187 : csrs_1_PIE; 
+  wire  _GEN_248 = ID_OK & c0_4 & |csrMask ? _GEN_182 : crmd_PG; 
+  wire  _GEN_249 = ID_OK & c0_4 & |csrMask ? _GEN_183 : crmd_DA; 
+  wire  _GEN_250 = ID_OK & c0_4 & |csrMask ? _GEN_184 : crmd_IE; 
+  wire [1:0] _GEN_251 = ID_OK & c0_4 & |csrMask ? _GEN_185 : crmd_PLV; 
+  wire  _GEN_252 = ID_OK & c0_4 & |csrMask ? _GEN_186 : csrs_1_PIE; 
+  wire [1:0] _GEN_253 = ID_OK & c0_4 & |csrMask ? _GEN_187 : csrs_1_PPLV; 
   wire [31:0] _GEN_258 = ID_OK & c0_4 & |csrMask ? _GEN_194 : csrs_5_PC; 
   wire  _GEN_261 = ID_OK & c0_4 & |csrMask ? _GEN_197 : csrs_8_NE; 
   wire [5:0] _GEN_262 = ID_OK & c0_4 & |csrMask ? _GEN_198 : csrs_8_PS; 
   wire [3:0] _GEN_263 = ID_OK & c0_4 & |csrMask ? _GEN_199 : csrs_8_Index; 
   wire [18:0] _GEN_264 = ID_OK & c0_4 & |csrMask ? _GEN_200 : _GEN_177; 
-  wire  _GEN_265 = ID_OK & c0_4 & |csrMask ? _GEN_201 : csrs_10_V; 
-  wire  _GEN_266 = ID_OK & c0_4 & |csrMask ? _GEN_202 : csrs_10_D; 
-  wire [1:0] _GEN_267 = ID_OK & c0_4 & |csrMask ? _GEN_203 : csrs_10_PLV; 
-  wire [1:0] _GEN_268 = ID_OK & c0_4 & |csrMask ? _GEN_204 : csrs_10_MAT; 
-  wire  _GEN_269 = ID_OK & c0_4 & |csrMask ? _GEN_205 : csrs_10_G; 
-  wire [23:0] _GEN_270 = ID_OK & c0_4 & |csrMask ? _GEN_206 : csrs_10_PPN; 
-  wire  _GEN_271 = ID_OK & c0_4 & |csrMask ? _GEN_207 : csrs_11_V; 
-  wire  _GEN_272 = ID_OK & c0_4 & |csrMask ? _GEN_208 : csrs_11_D; 
-  wire [1:0] _GEN_273 = ID_OK & c0_4 & |csrMask ? _GEN_209 : csrs_11_PLV; 
-  wire [1:0] _GEN_274 = ID_OK & c0_4 & |csrMask ? _GEN_210 : csrs_11_MAT; 
-  wire  _GEN_275 = ID_OK & c0_4 & |csrMask ? _GEN_211 : csrs_11_G; 
-  wire [23:0] _GEN_276 = ID_OK & c0_4 & |csrMask ? _GEN_212 : csrs_11_PPN; 
+  wire [23:0] _GEN_265 = ID_OK & c0_4 & |csrMask ? _GEN_201 : csrs_10_PPN; 
+  wire  _GEN_266 = ID_OK & c0_4 & |csrMask ? _GEN_202 : csrs_10_G; 
+  wire [1:0] _GEN_267 = ID_OK & c0_4 & |csrMask ? _GEN_203 : csrs_10_MAT; 
+  wire [1:0] _GEN_268 = ID_OK & c0_4 & |csrMask ? _GEN_204 : csrs_10_PLV; 
+  wire  _GEN_269 = ID_OK & c0_4 & |csrMask ? _GEN_205 : csrs_10_D; 
+  wire  _GEN_270 = ID_OK & c0_4 & |csrMask ? _GEN_206 : csrs_10_V; 
+  wire [23:0] _GEN_271 = ID_OK & c0_4 & |csrMask ? _GEN_207 : csrs_11_PPN; 
+  wire  _GEN_272 = ID_OK & c0_4 & |csrMask ? _GEN_208 : csrs_11_G; 
+  wire [1:0] _GEN_273 = ID_OK & c0_4 & |csrMask ? _GEN_209 : csrs_11_MAT; 
+  wire [1:0] _GEN_274 = ID_OK & c0_4 & |csrMask ? _GEN_210 : csrs_11_PLV; 
+  wire  _GEN_275 = ID_OK & c0_4 & |csrMask ? _GEN_211 : csrs_11_D; 
+  wire  _GEN_276 = ID_OK & c0_4 & |csrMask ? _GEN_212 : csrs_11_V; 
   wire [9:0] _GEN_277 = ID_OK & c0_4 & |csrMask ? _GEN_213 : asid_ASID; 
   wire  _GEN_291 = ID_OK & c0_4 & |csrMask ? _GEN_234 : _GEN_179; 
   wire [3:0] _tlbidx_Index_T_5 = tlbHit_1_1 ? 4'h1 : 4'h0; 
@@ -3376,12 +3349,12 @@ module SimpleLACore(
   wire [31:0] _wbData_T_23 = _wbData_T_22 | _wbData_T_16; 
   wire [31:0] _GEN_2370 = {{31'd0}, _wbData_T_17}; 
   wire  _T_1467 = mem_OK & |wbIdx; 
-  wire  _GEN_2313 = _tlb_E_T | _GEN_249; 
-  wire  _GEN_2314 = _tlb_E_T ? 1'h0 : _GEN_248; 
-  wire [1:0] _GEN_2315 = ID_OK & c0_8 ? csrs_1_PPLV : _GEN_246; 
-  wire  _GEN_2316 = ID_OK & c0_8 ? csrs_1_PIE : _GEN_247; 
-  wire  _GEN_2319 = ID_OK & c0_8 ? _GEN_2313 : _GEN_249; 
-  wire  _GEN_2320 = ID_OK & c0_8 ? _GEN_2314 : _GEN_248; 
+  wire  _GEN_2313 = _tlb_E_T | _GEN_248; 
+  wire  _GEN_2314 = _tlb_E_T ? 1'h0 : _GEN_249; 
+  wire [1:0] _GEN_2315 = ID_OK & c0_8 ? csrs_1_PPLV : _GEN_251; 
+  wire  _GEN_2316 = ID_OK & c0_8 ? csrs_1_PIE : _GEN_250; 
+  wire  _GEN_2319 = ID_OK & c0_8 ? _GEN_2313 : _GEN_248; 
+  wire  _GEN_2320 = ID_OK & c0_8 ? _GEN_2314 : _GEN_249; 
   wire  _GEN_2321 = ID_OK & c0_9 | idle; 
   wire [3:0] _ecodeNext_T_1 = ADEF ? 4'h8 : 4'h0; 
   wire [1:0] _ecodeNext_T_2 = PIF ? 2'h3 : 2'h0; 
@@ -3389,7 +3362,6 @@ module SimpleLACore(
   wire [3:0] _ecodeNext_T_5 = SYS ? 4'hb : 4'h0; 
   wire [3:0] _ecodeNext_T_6 = BRK ? 4'hc : 4'h0; 
   wire [3:0] _ecodeNext_T_7 = ALE ? 4'h9 : 4'h0; 
-  wire [3:0] _ecodeNext_T_8 = ADEM ? 4'h8 : 4'h0; 
   wire [1:0] _ecodeNext_T_10 = PIS ? 2'h2 : 2'h0; 
   wire [2:0] _ecodeNext_T_11 = PME ? 3'h4 : 3'h0; 
   wire [2:0] _ecodeNext_T_12 = PPI ? 3'h7 : 3'h0; 
@@ -3400,9 +3372,8 @@ module SimpleLACore(
   wire [3:0] _ecodeNext_T_20 = _ecodeNext_T_18 | _ecodeNext_T_5; 
   wire [3:0] _ecodeNext_T_21 = _ecodeNext_T_20 | _ecodeNext_T_6; 
   wire [3:0] _ecodeNext_T_22 = _ecodeNext_T_21 | _ecodeNext_T_7; 
-  wire [3:0] _ecodeNext_T_23 = _ecodeNext_T_22 | _ecodeNext_T_8; 
   wire [3:0] _GEN_2372 = {{3'd0}, PIL}; 
-  wire [3:0] _ecodeNext_T_24 = _ecodeNext_T_23 | _GEN_2372; 
+  wire [3:0] _ecodeNext_T_24 = _ecodeNext_T_22 | _GEN_2372; 
   wire [3:0] _GEN_2373 = {{2'd0}, _ecodeNext_T_10}; 
   wire [3:0] _ecodeNext_T_25 = _ecodeNext_T_24 | _GEN_2373; 
   wire [3:0] _GEN_2374 = {{1'd0}, _ecodeNext_T_11}; 
@@ -3550,10 +3521,10 @@ module SimpleLACore(
       if (excp) begin 
         csrs_1_PIE <= crmd_IE; 
       end else begin
-        csrs_1_PIE <= _GEN_253;
+        csrs_1_PIE <= _GEN_252;
       end
     end else begin
-      csrs_1_PIE <= _GEN_253;
+      csrs_1_PIE <= _GEN_252;
     end
     if (reset) begin 
       csrs_1_PPLV <= 2'h0; 
@@ -3561,10 +3532,10 @@ module SimpleLACore(
       if (excp) begin 
         csrs_1_PPLV <= crmd_PLV; 
       end else begin
-        csrs_1_PPLV <= _GEN_252;
+        csrs_1_PPLV <= _GEN_253;
       end
     end else begin
-      csrs_1_PPLV <= _GEN_252;
+      csrs_1_PPLV <= _GEN_253;
     end
     if (reset) begin 
       csrs_2_FPE <= 1'h0; 
@@ -3578,13 +3549,6 @@ module SimpleLACore(
     end else if (ID_OK & c0_4 & |csrMask) begin 
       if (_csrRD_T_5) begin 
         csrs_3_LIE <= _ectl_T_3[12:0]; 
-      end
-    end
-    if (reset) begin 
-      csrs_4_EsubCode <= 9'h0; 
-    end else if (_T_1316 & _T_1355) begin 
-      if (excp) begin 
-        csrs_4_EsubCode <= {{8'd0}, ADEM}; 
       end
     end
     if (reset) begin 
@@ -3763,157 +3727,157 @@ module SimpleLACore(
       csrs_10_PPN <= 24'h0; 
     end else if (ID_OK) begin 
       if (3'h1 == c0_7) begin 
-        csrs_10_PPN <= _GEN_270;
+        csrs_10_PPN <= _GEN_265;
       end else if (3'h2 == c0_7) begin 
         csrs_10_PPN <= {{4'd0}, _GEN_547};
       end else begin
-        csrs_10_PPN <= _GEN_270;
+        csrs_10_PPN <= _GEN_265;
       end
     end else begin
-      csrs_10_PPN <= _GEN_270;
+      csrs_10_PPN <= _GEN_265;
     end
     if (reset) begin 
       csrs_10_G <= 1'h0; 
     end else if (ID_OK) begin 
       if (3'h1 == c0_7) begin 
-        csrs_10_G <= _GEN_269;
+        csrs_10_G <= _GEN_266;
       end else if (3'h2 == c0_7) begin 
         csrs_10_G <= _GEN_548;
       end else begin
-        csrs_10_G <= _GEN_269;
+        csrs_10_G <= _GEN_266;
       end
     end else begin
-      csrs_10_G <= _GEN_269;
+      csrs_10_G <= _GEN_266;
     end
     if (reset) begin 
       csrs_10_MAT <= 2'h0; 
     end else if (ID_OK) begin 
       if (3'h1 == c0_7) begin 
-        csrs_10_MAT <= _GEN_268;
+        csrs_10_MAT <= _GEN_267;
       end else if (3'h2 == c0_7) begin 
         csrs_10_MAT <= _GEN_549;
       end else begin
-        csrs_10_MAT <= _GEN_268;
+        csrs_10_MAT <= _GEN_267;
       end
     end else begin
-      csrs_10_MAT <= _GEN_268;
+      csrs_10_MAT <= _GEN_267;
     end
     if (reset) begin 
       csrs_10_PLV <= 2'h0; 
     end else if (ID_OK) begin 
       if (3'h1 == c0_7) begin 
-        csrs_10_PLV <= _GEN_267;
+        csrs_10_PLV <= _GEN_268;
       end else if (3'h2 == c0_7) begin 
         csrs_10_PLV <= _GEN_550;
       end else begin
-        csrs_10_PLV <= _GEN_267;
+        csrs_10_PLV <= _GEN_268;
       end
     end else begin
-      csrs_10_PLV <= _GEN_267;
+      csrs_10_PLV <= _GEN_268;
     end
     if (reset) begin 
       csrs_10_D <= 1'h0; 
     end else if (ID_OK) begin 
       if (3'h1 == c0_7) begin 
-        csrs_10_D <= _GEN_266;
+        csrs_10_D <= _GEN_269;
       end else if (3'h2 == c0_7) begin 
         csrs_10_D <= _GEN_551;
       end else begin
-        csrs_10_D <= _GEN_266;
+        csrs_10_D <= _GEN_269;
       end
     end else begin
-      csrs_10_D <= _GEN_266;
+      csrs_10_D <= _GEN_269;
     end
     if (reset) begin 
       csrs_10_V <= 1'h0; 
     end else if (ID_OK) begin 
       if (3'h1 == c0_7) begin 
-        csrs_10_V <= _GEN_265;
+        csrs_10_V <= _GEN_270;
       end else if (3'h2 == c0_7) begin 
         csrs_10_V <= _GEN_552;
       end else begin
-        csrs_10_V <= _GEN_265;
+        csrs_10_V <= _GEN_270;
       end
     end else begin
-      csrs_10_V <= _GEN_265;
+      csrs_10_V <= _GEN_270;
     end
     if (reset) begin 
       csrs_11_PPN <= 24'h0; 
     end else if (ID_OK) begin 
       if (3'h1 == c0_7) begin 
-        csrs_11_PPN <= _GEN_276;
+        csrs_11_PPN <= _GEN_271;
       end else if (3'h2 == c0_7) begin 
         csrs_11_PPN <= {{4'd0}, _GEN_553};
       end else begin
-        csrs_11_PPN <= _GEN_276;
+        csrs_11_PPN <= _GEN_271;
       end
     end else begin
-      csrs_11_PPN <= _GEN_276;
+      csrs_11_PPN <= _GEN_271;
     end
     if (reset) begin 
       csrs_11_G <= 1'h0; 
     end else if (ID_OK) begin 
       if (3'h1 == c0_7) begin 
-        csrs_11_G <= _GEN_275;
+        csrs_11_G <= _GEN_272;
       end else if (3'h2 == c0_7) begin 
         csrs_11_G <= _GEN_548;
       end else begin
-        csrs_11_G <= _GEN_275;
+        csrs_11_G <= _GEN_272;
       end
     end else begin
-      csrs_11_G <= _GEN_275;
+      csrs_11_G <= _GEN_272;
     end
     if (reset) begin 
       csrs_11_MAT <= 2'h0; 
     end else if (ID_OK) begin 
       if (3'h1 == c0_7) begin 
-        csrs_11_MAT <= _GEN_274;
+        csrs_11_MAT <= _GEN_273;
       end else if (3'h2 == c0_7) begin 
         csrs_11_MAT <= _GEN_555;
       end else begin
-        csrs_11_MAT <= _GEN_274;
+        csrs_11_MAT <= _GEN_273;
       end
     end else begin
-      csrs_11_MAT <= _GEN_274;
+      csrs_11_MAT <= _GEN_273;
     end
     if (reset) begin 
       csrs_11_PLV <= 2'h0; 
     end else if (ID_OK) begin 
       if (3'h1 == c0_7) begin 
-        csrs_11_PLV <= _GEN_273;
+        csrs_11_PLV <= _GEN_274;
       end else if (3'h2 == c0_7) begin 
         csrs_11_PLV <= _GEN_556;
       end else begin
-        csrs_11_PLV <= _GEN_273;
+        csrs_11_PLV <= _GEN_274;
       end
     end else begin
-      csrs_11_PLV <= _GEN_273;
+      csrs_11_PLV <= _GEN_274;
     end
     if (reset) begin 
       csrs_11_D <= 1'h0; 
     end else if (ID_OK) begin 
       if (3'h1 == c0_7) begin 
-        csrs_11_D <= _GEN_272;
+        csrs_11_D <= _GEN_275;
       end else if (3'h2 == c0_7) begin 
         csrs_11_D <= _GEN_557;
       end else begin
-        csrs_11_D <= _GEN_272;
+        csrs_11_D <= _GEN_275;
       end
     end else begin
-      csrs_11_D <= _GEN_272;
+      csrs_11_D <= _GEN_275;
     end
     if (reset) begin 
       csrs_11_V <= 1'h0; 
     end else if (ID_OK) begin 
       if (3'h1 == c0_7) begin 
-        csrs_11_V <= _GEN_271;
+        csrs_11_V <= _GEN_276;
       end else if (3'h2 == c0_7) begin 
         csrs_11_V <= _GEN_558;
       end else begin
-        csrs_11_V <= _GEN_271;
+        csrs_11_V <= _GEN_276;
       end
     end else begin
-      csrs_11_V <= _GEN_271;
+      csrs_11_V <= _GEN_276;
     end
     if (reset) begin 
       asid_ASID <= 10'h0; 
@@ -6754,7 +6718,6 @@ module SimpleLACore(
       end
     end
   end
-
 endmodule
 module SimpleLACoreWrapRAM(
   input         clock,

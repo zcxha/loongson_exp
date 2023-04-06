@@ -35,7 +35,7 @@ syscall_pc1:
 ###2
   li.w      s2, 0x01 
   la.local  s4, syscall_pc2
-  li.w      t7, (DATABASE+0xd0000)
+  li.w      t7, DATABASE
   st.w      s4, t7, 4
 syscall_pc2:
   syscall 0

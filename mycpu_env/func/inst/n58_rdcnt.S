@@ -47,7 +47,7 @@ LEAF(n58_rdcnt_test)
     li.w          s7, 0xffffffff 
     move        t1, s7
     csrwr       t1, csr_tid
-    li.w          t7, (DATABASE+0xd0004) 
+    li.w          t7, (DATABASE+0x00004) 
     st.w        s4, t7, 4
     rdcntvl.w   t1
     rdcntid     t0 

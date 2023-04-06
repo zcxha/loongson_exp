@@ -1,5 +1,5 @@
 #define TLBREBASE 0xf000
-#define DATABASE  0x100000
+#define DATABASE  0x1d0000
 
 #define TLB_ENTRY 16
 #define TLB_IDX 4
@@ -20,7 +20,7 @@
     NOP4; \
     addi.w reg, reg, (imm & 0x00000fff)&0x800?(imm & 0x00000fff)-0x1000:(imm & 0x00000fff)
 #define LI_EXIMM(reg1,reg2,imm) \
-    li.w    reg1, (DATABASE+0xd0000); \
+    li.w    reg1, DATABASE; \
     li.w    reg2, imm; \
     st.w    reg2, reg1, 0
 
@@ -35,7 +35,7 @@
     csrxchg temp_reg2, temp_reg1, 0x0
 
 #define GET_EXIMM(reg1) \
-    li.w    reg1, (DATABASE+0xd0000); \
+    li.w    reg1, DATABASE; \
     ld.w    reg1, reg1, 0
 
 #define IMM_SYSCALL  0x1

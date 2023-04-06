@@ -57,7 +57,7 @@ LEAF(n72_dmw_test)
     csrwr t2, csr_tlbelo1 
     tlbwr  
 
-    li.w     t0, (DATABASE+0xd0000)
+    li.w     t0, DATABASE
     li.w     t1, 0xffffe000 
     and    t4, t0, t1 
     srli.w t4, t4, 0x4 

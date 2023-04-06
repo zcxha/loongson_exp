@@ -124,11 +124,11 @@ tlb_refill_error:
     bne   t5, t0, inst_error
 
 # test if cacop can triger tlb page invalid error or not
-    li.w    t0, (DATABASE+0xd0000)
+    li.w    t0, DATABASE
     li.w    t1, 0x8 
     st.w  t1, t0, 0 
 
-    li.w    t0, (DATABASE+0xd0000)
+    li.w    t0, DATABASE
     li.w    t1, 0x8 
     st.w  t1, t0, 0 
 
