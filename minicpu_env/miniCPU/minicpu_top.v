@@ -74,11 +74,11 @@ wire [31:0] alu_src2;
 wire [31:0] alu_result;
 
 
-always@(posedge clk) begin
-    if(reset)begin
-        pc <= 32'h1c000000;
+always @(posedge clk) begin
+    if (reset) begin
+        pc <= 32'h1bfffffc;     //trick: to make nextpc be 0x1c000000 during reset 
     end
-    else if (valid) begin
+    else begin
         pc <= nextpc;
     end
 end
