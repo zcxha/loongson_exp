@@ -85,7 +85,7 @@ begin
     end
 end
 
-//keep unchange if show_dtaa>=10
+//keep unchange if show_data>=10
 wire [6:0] keep_a_g;
 assign     keep_a_g = num_a_g + nxt_a_g;
 

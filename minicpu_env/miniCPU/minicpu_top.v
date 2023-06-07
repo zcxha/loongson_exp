@@ -13,6 +13,19 @@ module minicpu_top(
     input  wire [31:0] data_sram_rdata
 );
 
+reg         reset;
+always @(posedge clk) reset <= ~resetn;
+
+reg         valid;
+always @(posedge clk) begin
+    if (reset) begin
+        valid <= 1'b0;
+    end
+    else begin
+        valid <= 1'b1;
+    end
+end
+
 reg  [31:0] pc;
 wire [31:0] nextpc;
    
@@ -62,10 +75,10 @@ wire [31:0] alu_result;
 
 
 always@(posedge clk) begin
-    if(!resetn)begin
+    if(reset)begin
         pc <= 32'h1c000000;
     end
-    else begin 
+    else if (valid) begin
         pc <= nextpc;
     end
 end
