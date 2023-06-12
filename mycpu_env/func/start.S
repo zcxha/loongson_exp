@@ -28,6 +28,7 @@ start:
     csrwr  $r1,0x0
 #endif
     b    locate
+    NOP4
 
 ##avoid "j locate" not taken
     lu12i.w   t0, -0x80000
@@ -50,8 +51,10 @@ test_finish:
     st.w      zero, t2, 0
 1:
     b         1b
+    NOP4
 //    .word 0x80000000 // nemu trap
     b   1f
+    NOP4
 .org 0x130
 1:
     syscall 0x11
@@ -467,64 +470,104 @@ inst_test:
 ###TEST1 test
 #if TEST1
     bl n1_lu12i_w_test    #lu12i.w
+    NOP4
     bl idle_1s
-    
+    NOP4
+
     bl n2_add_w_test   #add.w
+    NOP4
     bl idle_1s
-    
+    NOP4
+
     bl n3_addi_w_test  #add.w
+    NOP4
     bl idle_1s
+    NOP4
     
     bl n4_sub_w_test   #sub.w
+    NOP4
     bl idle_1s
+    NOP4
     
     bl n5_slt_test    #slt
+    NOP4
     bl idle_1s
+    NOP4
     
     bl n6_sltu_test   #sltu
+    NOP4
     bl idle_1s
+    NOP4
     
     bl n7_and_test    #and
+    NOP4
     bl idle_1s
+    NOP4
     
     bl n8_or_test     #or
+    NOP4
     bl idle_1s
+    NOP4
     
     bl n9_xor_test    #xor
+    NOP4
     bl idle_1s
+    NOP4
     
     bl n10_nor_test   #nor
+    NOP4
     bl idle_1s
+    NOP4
     
     bl n11_slli_w_test   #slli.w
+    NOP4
     bl idle_1s
+    NOP4
     
     bl n12_srli_w_test   #srli.w
+    NOP4
     bl idle_1s
+    NOP4
     
     bl n13_srai_w_test   #srai.w
+    NOP4
     bl idle_1s
+    NOP4
     
     bl n14_ld_w_test    #ld.w
+    NOP4
     bl idle_1s
+    NOP4
     
     bl n15_st_w_test    #st.w
+    NOP4
     bl idle_1s
+    NOP4
     
     bl n16_beq_test   #beq
+    NOP4
     bl idle_1s
+    NOP4
     
     bl n17_bne_test   #bne
+    NOP4
     bl idle_1s
+    NOP4
     
     bl n18_bl_test   #bl
+    NOP4
     bl idle_1s
+    NOP4
     
     bl n19_jirl_test    #jirl
+    NOP4
     bl idle_1s
+    NOP4
     
     bl n20_b_test    #b
+    NOP4
     bl idle_1s
+    NOP4
     
 #endif
 ############################
@@ -759,6 +802,7 @@ test_end:
     LI  (s0, TEST_NUM)
     NOP4
     beq s0, s3, 1f
+    NOP4
 
     LI (a0, LED_ADDR)
     LI (a1, LED_RG1_ADDR)
@@ -772,6 +816,7 @@ test_end:
     st.w    t1, a2, 0
     li.w    a0, 0x1
     b  2f
+    NOP4
 1:
     LI (t1, 0x0001)
     LI (a0, LED_RG1_ADDR)
@@ -787,6 +832,7 @@ test_end:
     //sw t1, 0(t0)
 
     bl test_finish
+    NOP4
 
 idle_1s:
     NOP4
@@ -816,8 +862,11 @@ sub1:
     sltu    t4, t3, t2
     NOP4
     bne     t4, zero, 1f
+    NOP4
     addi.w  t3, t2, 0
     NOP4
 1:
     bne     t3, zero, sub1
+    NOP4
     jirl    zero, ra, 0
+    NOP4

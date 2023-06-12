@@ -315,9 +315,7 @@ LEAF(n22_slti_test)
 ###output (s0<<24)|s3
 inst_error:  
     slli.w t1, s0, 24
-    NOP4
     or t0, t1, s3 
-    NOP4
     st.w t0, s1, 0
     jirl zero, ra, 0
 END(n22_slti_test)
