@@ -55,7 +55,7 @@ test_finish:
 //    .word 0x80000000 // nemu trap
     b   1f
     NOP4
-.org 0x130
+.org 0x150
 1:
     syscall 0x11
 

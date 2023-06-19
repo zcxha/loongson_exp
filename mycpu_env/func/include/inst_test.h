@@ -245,7 +245,7 @@
     NOP4
 
 /* 18 */
-#define BL_INST_NUM 7*4
+#define BL_INST_NUM (3+2*NOP_INSERT*4)*4
 #define TEST_BL(back_flag, front_flag, b_flag_ref, f_flag_ref) \
     NOP; \
     add.w s7, zero, $r1; \
@@ -254,23 +254,22 @@
     lu12i.w v0, 0x0; \
     lu12i.w v1, 0x0; \
     bl 2000f; \
-    NOP4; \
 1000:; \
+    NOP4; \
     add.w a1, ra, zero; \
     LI (v0, back_flag); \
 1001:; \
     bl 3000f; \
     NOP4; \
     b 4000f;/*a2*/ \
-    NOP4; \
 2000:; \
-    nop;nop;nop;nop; \
+    NOP4; \
     add.w a0, ra, zero; \
     bl 1000b; \
     NOP4; \
     b 4000f;/*a1*/ \
-    NOP4; \
 3000:; \
+    NOP4; \
     add.w a2, ra, zero; \
     LI (v1, front_flag); \
 4000:; \
@@ -282,13 +281,13 @@
     addi.w a2, a2, BL_INST_NUM; \
     NOP; \
     bne v1, t4, inst_error; \
-    NOP; \
+    NOP4; \
     bne a2, a1, inst_error; \
     NOP4
 
 /* 19 */
-#define JIRL_INST_NUM0 6*4
-#define JIRL_INST_NUM1 (13+4*NOP_INSERT)*4
+#define JIRL_INST_NUM0 (3+1*4*NOP_INSERT)*4
+#define JIRL_INST_NUM1 (9+6*4*NOP_INSERT)*4
 #define TEST_JIRL(back_flag, front_flag, b_flag_ref, f_flag_ref) \
     NOP; \
     add.w s7, zero, $r1; \
@@ -297,13 +296,13 @@
     lu12i.w v0, 0x0; \
     lu12i.w v1, 0x0; \
     bl 1f; \
-    NOP4; \
 1:  ;  /*r1*/   \
+    NOP4; \
     addi.w t0, $r1, JIRL_INST_NUM0; \
     addi.w t1, $r1, JIRL_INST_NUM1; \
     b 2000f; \
-    NOP4; \
 1000:; /*t0*/ \
+    NOP4; \
     LI (v0, back_flag); \
     jirl zero, t1, 0; \
     NOP4; \
@@ -313,17 +312,17 @@
     jirl zero, t0, 0; \
     NOP4; \
     b 4000f; \
-    NOP4; \
 3000:; /*t1*/\
+    NOP4; \
     LI (v1, front_flag); \
 4000:; \
     LI (s5, b_flag_ref); \
     LI (s6, f_flag_ref); \
     add.w $r1, zero, s7; \
     bne v0, s5, inst_error; \
-    NOP; \
+    NOP4; \
     bne v1, s6, inst_error; \
-    NOP4
+    NOP4; \
 
 /* 20 */
 #define TEST_B(back_flag, front_flag, b_flag_ref, f_flag_ref) \
