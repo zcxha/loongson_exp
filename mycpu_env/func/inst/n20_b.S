@@ -213,6 +213,7 @@ LEAF(n20_b_test)
     TEST_B(0x18e08d00, 0x6fa3619e, 0x18e08d00, 0x6fa3619e)
 ###detect exception
     bne s2, zero, inst_error
+    NOP4
 ###score ++
     addi.w s3, s3, 1
 ###output (s0<<24)|s3
@@ -223,4 +224,5 @@ inst_error:
     NOP4
     st.w t0, s1, 0
     jirl zero, ra, 0
+    NOP4
 END(n20_b_test)
