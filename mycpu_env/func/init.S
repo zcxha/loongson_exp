@@ -50,6 +50,8 @@ LEAF(test6_init)
   li.w      t0, 0x0 
   li.w      t1, 0x3 
   csrxchg t0, t1, csr_crmd 
+  csrwr     zero, csr_dmw0 
+  csrwr     zero, csr_dmw1  
 
   jirl zero, ra, 0x0
 END(test6_init)
