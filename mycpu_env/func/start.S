@@ -52,12 +52,6 @@ test_finish:
 1:
     b         1b
     NOP4
-//    .word 0x80000000 // nemu trap
-    b   1f
-    NOP4
-.org 0x150
-1:
-    syscall 0x11
 
 ##avoid cpu run error
     lu12i.w   t0, -0x80000
@@ -446,6 +440,7 @@ ex_ret:
 
 #endif
 
+.org CODEBASE
 locate:
 
     LI (a0, LED_RG1_ADDR)

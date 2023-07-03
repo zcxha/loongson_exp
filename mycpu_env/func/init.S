@@ -103,18 +103,6 @@ LEAF(tlb_init)
     FILL_TLB(0x0036ab00, 0x0101ab00)
 ###TLB item 4
     FILL_TLB(0x0037ab00, 0x0102ab00)
-####TLB item 5
-#    FILL_TLB(0x0038ab00, 0x0103ab00)
-####TLB item 6
-#    FILL_TLB(0x0039ab00, 0x0104ab00)
-####TLB item 7
-#    FILL_TLB(0x003aab00, 0x00ffab00)
-####TLB item 8
-#    FILL_TLB(0x0134ab00, 0x01ffab00)
-####TLB item 9
-#    FILL_TLB(0x0234ab00, 0x02ffab00)
-####TLB item 10
-#    FILL_TLB(0x0334ab00, 0x03ffab00)
 
     li.w  t2, 0x000000ab
     csrwr t2, csr_asid
@@ -127,18 +115,6 @@ LEAF(tlb_init)
     FILL_TLB(0x003aab00, 0x00ffab00)
 ###TLB item 8
     FILL_TLB(0x0134ab00, 0x01ffab00)
-####TLB item 15
-#    FILL_TLB(0x0834ab00, 0x08ffab00)
-####TLB item 16
-#    FILL_TLB(0x0934ab00, 0x09ffab00)
-####TLB item 17
-#    FILL_TLB(0x0a34ab00, 0x0affab00)
-####TLB item 18
-#    FILL_TLB(0x0b34ab00, 0x0bffab00)
-####TLB item 19
-#    FILL_TLB(0x0c34ab00, 0x0cffab00)
-####TLB item 20
-#    FILL_TLB(0x0d34ab00, 0x0dffab00)
 	
     li.w  t2, 0x000000ac
     csrwr t2, csr_asid
@@ -151,18 +127,6 @@ LEAF(tlb_init)
     FILL_TLB(0x034ab100, 0x0ffab100)
 ###TLB item 12
     FILL_TLB(0x034ab200, 0x0ffab200)
-####TLB item 25
-#    FILL_TLB(0x034ab300, 0x0ffab300)
-####TLB item 26
-#    FILL_TLB(0x034ab400, 0x0ffab400)
-####TLB item 27
-#    FILL_TLB(0x034ab500, 0x0ffab500)
-####TLB item 28
-#    FILL_TLB(0x034ab600, 0x0ffab600)
-####TLB item 29
-#    FILL_TLB(0x034ab700, 0x0ffab700)
-####TLB item 30
-#    FILL_TLB(0x034ab800, 0x0ffab800)
 	
     li.w  t2, 0x000000ad
     csrwr t2, csr_asid
