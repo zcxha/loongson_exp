@@ -175,7 +175,7 @@ tlb #(.TLBNUM(16)) tlb (
 // write \ read
 
 //  index  | e | vppn   | ps   | asid |  g  |  ppn0  |  plv0 mat0 d0 v0 |  ppn1  |  plv1 mat1 d1 v1 |
-//   0     | 1 | 0x1000 | 0x16 | 0x0  |  0  |  0x1000|     0,1,1,1      |  0x2000|     0,1,1,1      | 
+//   0     | 1 | 0x1000 | 0x16 | 0x0  |  0  |  0x1000|     0,1,1,1      |  0x1000|     0,1,1,1      | 
 //   1     | 1 | 0x111  | 0xc  | 0x1  |  1  |  0x222 |     0,1,1,1      |  0x033 |     0,1,1,1      | 
 //   2     | 1 | 0x222  | 0xc  | 0x2  |  0  |  0x333 |     0,1,1,1      |  0x044 |     0,1,1,1      | 
 //   3     | 1 | 0x333  | 0xc  | 0x3  |  1  |  0x444 |     0,1,1,1      |  0x055 |     0,1,1,1      | 
@@ -190,7 +190,7 @@ tlb #(.TLBNUM(16)) tlb (
 //   12    | 1 | 0xccc  | 0xc  | 0xc  |  0  |  0xddd |     0,1,1,1      |  0x0ee |     0,1,1,1      | 
 //   13    | 1 | 0xddd  | 0xc  | 0xd  |  0  |  0xeee |     0,1,1,1      |  0x0ff |     0,1,1,1      | 
 //   14    | 1 | 0xeee  | 0xc  | 0xe  |  0  |  0xfff |     0,1,1,1      |  0x000 |     0,1,1,1      | 
-//   15    | 1 | 0xf000 | 0x16 | 0xf  |  0  |  0x0000|     0,1,1,1      |  0x3000|     0,1,1,1      | 
+//   15    | 1 | 0xf000 | 0x16 | 0xf  |  0  |  0x0000|     0,1,1,1      |  0x0000|     0,1,1,1      | 
 
 wire [18:0] tlb_vppn [15:0];
 wire        tlb_e    [15:0];
@@ -378,7 +378,7 @@ assign tlb_v0[13] = 1'h1;
 assign tlb_v0[14] = 1'h1;
 assign tlb_v0[15] = 1'h1;
 
-assign tlb_ppn1[ 0] = 20'h2000;
+assign tlb_ppn1[ 0] = 20'h1000;
 assign tlb_ppn1[ 1] = 20'h033;
 assign tlb_ppn1[ 2] = 20'h044;
 assign tlb_ppn1[ 3] = 20'h055;
@@ -393,7 +393,7 @@ assign tlb_ppn1[11] = 20'h0dd;
 assign tlb_ppn1[12] = 20'h0ee;
 assign tlb_ppn1[13] = 20'h0ff;
 assign tlb_ppn1[14] = 20'h000;
-assign tlb_ppn1[15] = 20'h3000;
+assign tlb_ppn1[15] = 20'h0000;
 
 assign tlb_plv1[ 0] = 2'd0;
 assign tlb_plv1[ 1] = 2'd0;
@@ -466,7 +466,7 @@ assign tlb_v1[15] = 1'h1;
 //search
 // s_vppn  |  s_va_bit12  | s_asid  |  s_found  |  s_index  |  s_ppn  | s_ps | s_plv s_mat s_d s_v |
 //  0x1000 |         0x1  |    0x0  |        1  |        0  |  0x1000 | 0x16 |     0,1,1,1         |
-//  0x1200 |         0x0  |    0x0  |        1  |        0  |  0x2000 | 0x16 |     0,1,1,1         |
+//  0x1100 |         0x0  |    0x0  |        1  |        0  |  0x1000 | 0x16 |     0,1,1,1         |
 //  0x1000 |         0x1  |    0x1  |        0  |        x  |  0xxxx  |   x  |     x,x,x,x         |
 //  0x111  |         0x1  |    0x0  |        1  |        1  |  0x033  | 0xc  |     0,1,1,1         |
 //  0x111  |         0x0  |    0x1  |        1  |        1  |  0x222  | 0xc  |     0,1,1,1         |
@@ -488,7 +488,7 @@ assign tlb_v1[15] = 1'h1;
 //  0xccc  |         0x0  |    0xc  |        1  |       12  |  0xddd  | 0xc  |     0,1,1,1         |
 //  0xddd  |         0x1  |    0xd  |        1  |       13  |  0x0ff  | 0xc  |     0,1,1,1         |
 //  0xeee  |         0x0  |    0xe  |        1  |       14  |  0xfff  | 0xc  |     0,1,1,1         |
-//  0xf200 |         0x0  |    0xf  |        1  |       15  |  0x3000 | 0x16 |     0,1,1,1         |
+//  0xf000 |         0x0  |    0xf  |        1  |       15  |  0x0000 | 0x16 |     0,1,1,1         |
 //  0xabc  |         0x0  |    0xf  |        0  |        x  |  0xxxx  |   x  |     x,x,x,x         |
 //  0x123  |         0x1  |    0x3  |        0  |        x  |  0xxxx  |   x  |     x,x,x,x         |
 
@@ -505,7 +505,7 @@ wire        s_test_d       [25:0];
 wire        s_test_v       [25:0];
 
 assign s_test_vppn[ 0] = 19'h1000;
-assign s_test_vppn[ 1] = 19'h1200;
+assign s_test_vppn[ 1] = 19'h1100;
 assign s_test_vppn[ 2] = 19'h1000;
 assign s_test_vppn[ 3] = 19'h111;
 assign s_test_vppn[ 4] = 19'h111;
@@ -527,7 +527,7 @@ assign s_test_vppn[19] = 19'hbbb;
 assign s_test_vppn[20] = 19'hccc;
 assign s_test_vppn[21] = 19'hddd;
 assign s_test_vppn[22] = 19'heee;
-assign s_test_vppn[23] = 19'hf200;
+assign s_test_vppn[23] = 19'hf000;
 assign s_test_vppn[24] = 19'habc;
 assign s_test_vppn[25] = 19'h123;
 
@@ -640,7 +640,7 @@ assign s_test_index[24] = 4'hx;
 assign s_test_index[25] = 4'hx;
 
 assign s_test_ppn[ 0] = 20'h1000;
-assign s_test_ppn[ 1] = 20'h2000;
+assign s_test_ppn[ 1] = 20'h1000;
 assign s_test_ppn[ 2] = 20'hxxx;
 assign s_test_ppn[ 3] = 20'h033;
 assign s_test_ppn[ 4] = 20'h222;
@@ -662,7 +662,7 @@ assign s_test_ppn[19] = 20'h0dd;
 assign s_test_ppn[20] = 20'hddd;
 assign s_test_ppn[21] = 20'h0ff;
 assign s_test_ppn[22] = 20'hfff;
-assign s_test_ppn[23] = 20'h3000;
+assign s_test_ppn[23] = 20'h0000;
 assign s_test_ppn[24] = 20'hxxx;
 assign s_test_ppn[25] = 20'hxxx;
 
