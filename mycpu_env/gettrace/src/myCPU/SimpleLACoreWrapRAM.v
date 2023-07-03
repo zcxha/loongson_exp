@@ -125,7 +125,7 @@ module SimpleLACore(
   reg  tlb_0_E;
   reg [18:0] tlb_0_VPPN;
   reg [5:0] tlb_0_PS;
-  wire  vaMatch_0 = tlb_0_VPPN[18:10] == PC[31:23] & (tlb_0_PS == 6'h16 | tlb_0_VPPN[9:0] == PC[22:13]);
+  wire  vaMatch_0 = tlb_0_VPPN[18:9] == PC[31:22] & (tlb_0_PS == 6'h15 | tlb_0_VPPN[8:0] == PC[21:13]);
   reg  tlb_0_G;
   reg [9:0] tlb_0_ASID;
   wire  asidMatch_0 = tlb_0_ASID == asid_ASID;
@@ -133,7 +133,7 @@ module SimpleLACore(
   reg  tlb_1_E;
   reg [18:0] tlb_1_VPPN;
   reg [5:0] tlb_1_PS;
-  wire  vaMatch_1 = tlb_1_VPPN[18:10] == PC[31:23] & (tlb_1_PS == 6'h16 | tlb_1_VPPN[9:0] == PC[22:13]);
+  wire  vaMatch_1 = tlb_1_VPPN[18:9] == PC[31:22] & (tlb_1_PS == 6'h15 | tlb_1_VPPN[8:0] == PC[21:13]);
   reg  tlb_1_G;
   reg [9:0] tlb_1_ASID;
   wire  asidMatch_1 = tlb_1_ASID == asid_ASID;
@@ -141,7 +141,7 @@ module SimpleLACore(
   reg  tlb_2_E;
   reg [18:0] tlb_2_VPPN;
   reg [5:0] tlb_2_PS;
-  wire  vaMatch_2 = tlb_2_VPPN[18:10] == PC[31:23] & (tlb_2_PS == 6'h16 | tlb_2_VPPN[9:0] == PC[22:13]);
+  wire  vaMatch_2 = tlb_2_VPPN[18:9] == PC[31:22] & (tlb_2_PS == 6'h15 | tlb_2_VPPN[8:0] == PC[21:13]);
   reg  tlb_2_G;
   reg [9:0] tlb_2_ASID;
   wire  asidMatch_2 = tlb_2_ASID == asid_ASID;
@@ -149,7 +149,7 @@ module SimpleLACore(
   reg  tlb_3_E;
   reg [18:0] tlb_3_VPPN;
   reg [5:0] tlb_3_PS;
-  wire  vaMatch_3 = tlb_3_VPPN[18:10] == PC[31:23] & (tlb_3_PS == 6'h16 | tlb_3_VPPN[9:0] == PC[22:13]);
+  wire  vaMatch_3 = tlb_3_VPPN[18:9] == PC[31:22] & (tlb_3_PS == 6'h15 | tlb_3_VPPN[8:0] == PC[21:13]);
   reg  tlb_3_G;
   reg [9:0] tlb_3_ASID;
   wire  asidMatch_3 = tlb_3_ASID == asid_ASID;
@@ -157,7 +157,7 @@ module SimpleLACore(
   reg  tlb_4_E;
   reg [18:0] tlb_4_VPPN;
   reg [5:0] tlb_4_PS;
-  wire  vaMatch_4 = tlb_4_VPPN[18:10] == PC[31:23] & (tlb_4_PS == 6'h16 | tlb_4_VPPN[9:0] == PC[22:13]);
+  wire  vaMatch_4 = tlb_4_VPPN[18:9] == PC[31:22] & (tlb_4_PS == 6'h15 | tlb_4_VPPN[8:0] == PC[21:13]);
   reg  tlb_4_G;
   reg [9:0] tlb_4_ASID;
   wire  asidMatch_4 = tlb_4_ASID == asid_ASID;
@@ -165,7 +165,7 @@ module SimpleLACore(
   reg  tlb_5_E;
   reg [18:0] tlb_5_VPPN;
   reg [5:0] tlb_5_PS;
-  wire  vaMatch_5 = tlb_5_VPPN[18:10] == PC[31:23] & (tlb_5_PS == 6'h16 | tlb_5_VPPN[9:0] == PC[22:13]);
+  wire  vaMatch_5 = tlb_5_VPPN[18:9] == PC[31:22] & (tlb_5_PS == 6'h15 | tlb_5_VPPN[8:0] == PC[21:13]);
   reg  tlb_5_G;
   reg [9:0] tlb_5_ASID;
   wire  asidMatch_5 = tlb_5_ASID == asid_ASID;
@@ -173,7 +173,7 @@ module SimpleLACore(
   reg  tlb_6_E;
   reg [18:0] tlb_6_VPPN;
   reg [5:0] tlb_6_PS;
-  wire  vaMatch_6 = tlb_6_VPPN[18:10] == PC[31:23] & (tlb_6_PS == 6'h16 | tlb_6_VPPN[9:0] == PC[22:13]);
+  wire  vaMatch_6 = tlb_6_VPPN[18:9] == PC[31:22] & (tlb_6_PS == 6'h15 | tlb_6_VPPN[8:0] == PC[21:13]);
   reg  tlb_6_G;
   reg [9:0] tlb_6_ASID;
   wire  asidMatch_6 = tlb_6_ASID == asid_ASID;
@@ -181,7 +181,7 @@ module SimpleLACore(
   reg  tlb_7_E;
   reg [18:0] tlb_7_VPPN;
   reg [5:0] tlb_7_PS;
-  wire  vaMatch_7 = tlb_7_VPPN[18:10] == PC[31:23] & (tlb_7_PS == 6'h16 | tlb_7_VPPN[9:0] == PC[22:13]);
+  wire  vaMatch_7 = tlb_7_VPPN[18:9] == PC[31:22] & (tlb_7_PS == 6'h15 | tlb_7_VPPN[8:0] == PC[21:13]);
   reg  tlb_7_G;
   reg [9:0] tlb_7_ASID;
   wire  asidMatch_7 = tlb_7_ASID == asid_ASID;
@@ -189,7 +189,7 @@ module SimpleLACore(
   reg  tlb_8_E;
   reg [18:0] tlb_8_VPPN;
   reg [5:0] tlb_8_PS;
-  wire  vaMatch_8 = tlb_8_VPPN[18:10] == PC[31:23] & (tlb_8_PS == 6'h16 | tlb_8_VPPN[9:0] == PC[22:13]);
+  wire  vaMatch_8 = tlb_8_VPPN[18:9] == PC[31:22] & (tlb_8_PS == 6'h15 | tlb_8_VPPN[8:0] == PC[21:13]);
   reg  tlb_8_G;
   reg [9:0] tlb_8_ASID;
   wire  asidMatch_8 = tlb_8_ASID == asid_ASID;
@@ -197,7 +197,7 @@ module SimpleLACore(
   reg  tlb_9_E;
   reg [18:0] tlb_9_VPPN;
   reg [5:0] tlb_9_PS;
-  wire  vaMatch_9 = tlb_9_VPPN[18:10] == PC[31:23] & (tlb_9_PS == 6'h16 | tlb_9_VPPN[9:0] == PC[22:13]);
+  wire  vaMatch_9 = tlb_9_VPPN[18:9] == PC[31:22] & (tlb_9_PS == 6'h15 | tlb_9_VPPN[8:0] == PC[21:13]);
   reg  tlb_9_G;
   reg [9:0] tlb_9_ASID;
   wire  asidMatch_9 = tlb_9_ASID == asid_ASID;
@@ -205,7 +205,7 @@ module SimpleLACore(
   reg  tlb_10_E;
   reg [18:0] tlb_10_VPPN;
   reg [5:0] tlb_10_PS;
-  wire  vaMatch_10 = tlb_10_VPPN[18:10] == PC[31:23] & (tlb_10_PS == 6'h16 | tlb_10_VPPN[9:0] == PC[22:13]);
+  wire  vaMatch_10 = tlb_10_VPPN[18:9] == PC[31:22] & (tlb_10_PS == 6'h15 | tlb_10_VPPN[8:0] == PC[21:13]);
   reg  tlb_10_G;
   reg [9:0] tlb_10_ASID;
   wire  asidMatch_10 = tlb_10_ASID == asid_ASID;
@@ -213,7 +213,7 @@ module SimpleLACore(
   reg  tlb_11_E;
   reg [18:0] tlb_11_VPPN;
   reg [5:0] tlb_11_PS;
-  wire  vaMatch_11 = tlb_11_VPPN[18:10] == PC[31:23] & (tlb_11_PS == 6'h16 | tlb_11_VPPN[9:0] == PC[22:13]);
+  wire  vaMatch_11 = tlb_11_VPPN[18:9] == PC[31:22] & (tlb_11_PS == 6'h15 | tlb_11_VPPN[8:0] == PC[21:13]);
   reg  tlb_11_G;
   reg [9:0] tlb_11_ASID;
   wire  asidMatch_11 = tlb_11_ASID == asid_ASID;
@@ -221,7 +221,7 @@ module SimpleLACore(
   reg  tlb_12_E;
   reg [18:0] tlb_12_VPPN;
   reg [5:0] tlb_12_PS;
-  wire  vaMatch_12 = tlb_12_VPPN[18:10] == PC[31:23] & (tlb_12_PS == 6'h16 | tlb_12_VPPN[9:0] == PC[22:13]);
+  wire  vaMatch_12 = tlb_12_VPPN[18:9] == PC[31:22] & (tlb_12_PS == 6'h15 | tlb_12_VPPN[8:0] == PC[21:13]);
   reg  tlb_12_G;
   reg [9:0] tlb_12_ASID;
   wire  asidMatch_12 = tlb_12_ASID == asid_ASID;
@@ -229,7 +229,7 @@ module SimpleLACore(
   reg  tlb_13_E;
   reg [18:0] tlb_13_VPPN;
   reg [5:0] tlb_13_PS;
-  wire  vaMatch_13 = tlb_13_VPPN[18:10] == PC[31:23] & (tlb_13_PS == 6'h16 | tlb_13_VPPN[9:0] == PC[22:13]);
+  wire  vaMatch_13 = tlb_13_VPPN[18:9] == PC[31:22] & (tlb_13_PS == 6'h15 | tlb_13_VPPN[8:0] == PC[21:13]);
   reg  tlb_13_G;
   reg [9:0] tlb_13_ASID;
   wire  asidMatch_13 = tlb_13_ASID == asid_ASID;
@@ -237,7 +237,7 @@ module SimpleLACore(
   reg  tlb_14_E;
   reg [18:0] tlb_14_VPPN;
   reg [5:0] tlb_14_PS;
-  wire  vaMatch_14 = tlb_14_VPPN[18:10] == PC[31:23] & (tlb_14_PS == 6'h16 | tlb_14_VPPN[9:0] == PC[22:13]);
+  wire  vaMatch_14 = tlb_14_VPPN[18:9] == PC[31:22] & (tlb_14_PS == 6'h15 | tlb_14_VPPN[8:0] == PC[21:13]);
   reg  tlb_14_G;
   reg [9:0] tlb_14_ASID;
   wire  asidMatch_14 = tlb_14_ASID == asid_ASID;
@@ -245,7 +245,7 @@ module SimpleLACore(
   reg  tlb_15_E;
   reg [18:0] tlb_15_VPPN;
   reg [5:0] tlb_15_PS;
-  wire  vaMatch_15 = tlb_15_VPPN[18:10] == PC[31:23] & (tlb_15_PS == 6'h16 | tlb_15_VPPN[9:0] == PC[22:13]);
+  wire  vaMatch_15 = tlb_15_VPPN[18:9] == PC[31:22] & (tlb_15_PS == 6'h15 | tlb_15_VPPN[8:0] == PC[21:13]);
   reg  tlb_15_G;
   reg [9:0] tlb_15_ASID;
   wire  asidMatch_15 = tlb_15_ASID == asid_ASID;
@@ -291,7 +291,7 @@ module SimpleLACore(
   wire [5:0] _foundTLB_T_418 = tlbHit_15 ? tlb_15_PS : 6'h0;
   wire [5:0] foundTLB_PS = _foundTLB_T_432 | _foundTLB_T_418;
   wire  _oddPG_T = foundTLB_PS == 6'hc;
-  wire  oddPG = foundTLB_PS == 6'hc ? PC[12] : PC[22];
+  wire  oddPG = foundTLB_PS == 6'hc ? PC[12] : PC[21];
   reg  tlb_0_P1_V;
   reg  tlb_1_P1_V;
   reg  tlb_2_P1_V;
@@ -1110,53 +1110,53 @@ module SimpleLACore(
   wire [31:0] _EXVA_T_7 = _EXVA_T_4 | _EXVA_T_5;
   wire [31:0] _EXVA_T_6 = _INE_T_1 ? rkd : 32'h0;
   wire [31:0] EXVA = _EXVA_T_7 | _EXVA_T_6;
-  wire  vaMatch_0_1 = tlb_0_VPPN[18:10] == EXVA[31:23] & (tlb_0_PS == 6'h16 | tlb_0_VPPN[9:0] == EXVA[22:13]);
+  wire  vaMatch_0_1 = tlb_0_VPPN[18:9] == EXVA[31:22] & (tlb_0_PS == 6'h15 | tlb_0_VPPN[8:0] == EXVA[21:13]);
   wire [9:0] EXASID = _INE_T_1 ? rj[9:0] : asid_ASID;
   wire  asidMatch_0_1 = tlb_0_ASID == EXASID;
   wire  tlbHit_0_1 = tlb_0_E & vaMatch_0_1 & (tlb_0_G | asidMatch_0_1);
-  wire  vaMatch_1_1 = tlb_1_VPPN[18:10] == EXVA[31:23] & (tlb_1_PS == 6'h16 | tlb_1_VPPN[9:0] == EXVA[22:13]);
+  wire  vaMatch_1_1 = tlb_1_VPPN[18:9] == EXVA[31:22] & (tlb_1_PS == 6'h15 | tlb_1_VPPN[8:0] == EXVA[21:13]);
   wire  asidMatch_1_1 = tlb_1_ASID == EXASID;
   wire  tlbHit_1_1 = tlb_1_E & vaMatch_1_1 & (tlb_1_G | asidMatch_1_1);
-  wire  vaMatch_2_1 = tlb_2_VPPN[18:10] == EXVA[31:23] & (tlb_2_PS == 6'h16 | tlb_2_VPPN[9:0] == EXVA[22:13]);
+  wire  vaMatch_2_1 = tlb_2_VPPN[18:9] == EXVA[31:22] & (tlb_2_PS == 6'h15 | tlb_2_VPPN[8:0] == EXVA[21:13]);
   wire  asidMatch_2_1 = tlb_2_ASID == EXASID;
   wire  tlbHit_2_1 = tlb_2_E & vaMatch_2_1 & (tlb_2_G | asidMatch_2_1);
-  wire  vaMatch_3_1 = tlb_3_VPPN[18:10] == EXVA[31:23] & (tlb_3_PS == 6'h16 | tlb_3_VPPN[9:0] == EXVA[22:13]);
+  wire  vaMatch_3_1 = tlb_3_VPPN[18:9] == EXVA[31:22] & (tlb_3_PS == 6'h15 | tlb_3_VPPN[8:0] == EXVA[21:13]);
   wire  asidMatch_3_1 = tlb_3_ASID == EXASID;
   wire  tlbHit_3_1 = tlb_3_E & vaMatch_3_1 & (tlb_3_G | asidMatch_3_1);
-  wire  vaMatch_4_1 = tlb_4_VPPN[18:10] == EXVA[31:23] & (tlb_4_PS == 6'h16 | tlb_4_VPPN[9:0] == EXVA[22:13]);
+  wire  vaMatch_4_1 = tlb_4_VPPN[18:9] == EXVA[31:22] & (tlb_4_PS == 6'h15 | tlb_4_VPPN[8:0] == EXVA[21:13]);
   wire  asidMatch_4_1 = tlb_4_ASID == EXASID;
   wire  tlbHit_4_1 = tlb_4_E & vaMatch_4_1 & (tlb_4_G | asidMatch_4_1);
-  wire  vaMatch_5_1 = tlb_5_VPPN[18:10] == EXVA[31:23] & (tlb_5_PS == 6'h16 | tlb_5_VPPN[9:0] == EXVA[22:13]);
+  wire  vaMatch_5_1 = tlb_5_VPPN[18:9] == EXVA[31:22] & (tlb_5_PS == 6'h15 | tlb_5_VPPN[8:0] == EXVA[21:13]);
   wire  asidMatch_5_1 = tlb_5_ASID == EXASID;
   wire  tlbHit_5_1 = tlb_5_E & vaMatch_5_1 & (tlb_5_G | asidMatch_5_1);
-  wire  vaMatch_6_1 = tlb_6_VPPN[18:10] == EXVA[31:23] & (tlb_6_PS == 6'h16 | tlb_6_VPPN[9:0] == EXVA[22:13]);
+  wire  vaMatch_6_1 = tlb_6_VPPN[18:9] == EXVA[31:22] & (tlb_6_PS == 6'h15 | tlb_6_VPPN[8:0] == EXVA[21:13]);
   wire  asidMatch_6_1 = tlb_6_ASID == EXASID;
   wire  tlbHit_6_1 = tlb_6_E & vaMatch_6_1 & (tlb_6_G | asidMatch_6_1);
-  wire  vaMatch_7_1 = tlb_7_VPPN[18:10] == EXVA[31:23] & (tlb_7_PS == 6'h16 | tlb_7_VPPN[9:0] == EXVA[22:13]);
+  wire  vaMatch_7_1 = tlb_7_VPPN[18:9] == EXVA[31:22] & (tlb_7_PS == 6'h15 | tlb_7_VPPN[8:0] == EXVA[21:13]);
   wire  asidMatch_7_1 = tlb_7_ASID == EXASID;
   wire  tlbHit_7_1 = tlb_7_E & vaMatch_7_1 & (tlb_7_G | asidMatch_7_1);
-  wire  vaMatch_8_1 = tlb_8_VPPN[18:10] == EXVA[31:23] & (tlb_8_PS == 6'h16 | tlb_8_VPPN[9:0] == EXVA[22:13]);
+  wire  vaMatch_8_1 = tlb_8_VPPN[18:9] == EXVA[31:22] & (tlb_8_PS == 6'h15 | tlb_8_VPPN[8:0] == EXVA[21:13]);
   wire  asidMatch_8_1 = tlb_8_ASID == EXASID;
   wire  tlbHit_8_1 = tlb_8_E & vaMatch_8_1 & (tlb_8_G | asidMatch_8_1);
-  wire  vaMatch_9_1 = tlb_9_VPPN[18:10] == EXVA[31:23] & (tlb_9_PS == 6'h16 | tlb_9_VPPN[9:0] == EXVA[22:13]);
+  wire  vaMatch_9_1 = tlb_9_VPPN[18:9] == EXVA[31:22] & (tlb_9_PS == 6'h15 | tlb_9_VPPN[8:0] == EXVA[21:13]);
   wire  asidMatch_9_1 = tlb_9_ASID == EXASID;
   wire  tlbHit_9_1 = tlb_9_E & vaMatch_9_1 & (tlb_9_G | asidMatch_9_1);
-  wire  vaMatch_10_1 = tlb_10_VPPN[18:10] == EXVA[31:23] & (tlb_10_PS == 6'h16 | tlb_10_VPPN[9:0] == EXVA[22:13]);
+  wire  vaMatch_10_1 = tlb_10_VPPN[18:9] == EXVA[31:22] & (tlb_10_PS == 6'h15 | tlb_10_VPPN[8:0] == EXVA[21:13]);
   wire  asidMatch_10_1 = tlb_10_ASID == EXASID;
   wire  tlbHit_10_1 = tlb_10_E & vaMatch_10_1 & (tlb_10_G | asidMatch_10_1);
-  wire  vaMatch_11_1 = tlb_11_VPPN[18:10] == EXVA[31:23] & (tlb_11_PS == 6'h16 | tlb_11_VPPN[9:0] == EXVA[22:13]);
+  wire  vaMatch_11_1 = tlb_11_VPPN[18:9] == EXVA[31:22] & (tlb_11_PS == 6'h15 | tlb_11_VPPN[8:0] == EXVA[21:13]);
   wire  asidMatch_11_1 = tlb_11_ASID == EXASID;
   wire  tlbHit_11_1 = tlb_11_E & vaMatch_11_1 & (tlb_11_G | asidMatch_11_1);
-  wire  vaMatch_12_1 = tlb_12_VPPN[18:10] == EXVA[31:23] & (tlb_12_PS == 6'h16 | tlb_12_VPPN[9:0] == EXVA[22:13]);
+  wire  vaMatch_12_1 = tlb_12_VPPN[18:9] == EXVA[31:22] & (tlb_12_PS == 6'h15 | tlb_12_VPPN[8:0] == EXVA[21:13]);
   wire  asidMatch_12_1 = tlb_12_ASID == EXASID;
   wire  tlbHit_12_1 = tlb_12_E & vaMatch_12_1 & (tlb_12_G | asidMatch_12_1);
-  wire  vaMatch_13_1 = tlb_13_VPPN[18:10] == EXVA[31:23] & (tlb_13_PS == 6'h16 | tlb_13_VPPN[9:0] == EXVA[22:13]);
+  wire  vaMatch_13_1 = tlb_13_VPPN[18:9] == EXVA[31:22] & (tlb_13_PS == 6'h15 | tlb_13_VPPN[8:0] == EXVA[21:13]);
   wire  asidMatch_13_1 = tlb_13_ASID == EXASID;
   wire  tlbHit_13_1 = tlb_13_E & vaMatch_13_1 & (tlb_13_G | asidMatch_13_1);
-  wire  vaMatch_14_1 = tlb_14_VPPN[18:10] == EXVA[31:23] & (tlb_14_PS == 6'h16 | tlb_14_VPPN[9:0] == EXVA[22:13]);
+  wire  vaMatch_14_1 = tlb_14_VPPN[18:9] == EXVA[31:22] & (tlb_14_PS == 6'h15 | tlb_14_VPPN[8:0] == EXVA[21:13]);
   wire  asidMatch_14_1 = tlb_14_ASID == EXASID;
   wire  tlbHit_14_1 = tlb_14_E & vaMatch_14_1 & (tlb_14_G | asidMatch_14_1);
-  wire  vaMatch_15_1 = tlb_15_VPPN[18:10] == EXVA[31:23] & (tlb_15_PS == 6'h16 | tlb_15_VPPN[9:0] == EXVA[22:13]);
+  wire  vaMatch_15_1 = tlb_15_VPPN[18:9] == EXVA[31:22] & (tlb_15_PS == 6'h15 | tlb_15_VPPN[8:0] == EXVA[21:13]);
   wire  asidMatch_15_1 = tlb_15_ASID == EXASID;
   wire  tlbHit_15_1 = tlb_15_E & vaMatch_15_1 & (tlb_15_G | asidMatch_15_1);
   wire  _miss_T_30 = tlbHit_0_1 | tlbHit_1_1 | tlbHit_2_1 | tlbHit_3_1 | tlbHit_4_1 | tlbHit_5_1 | tlbHit_6_1 |
@@ -1266,7 +1266,7 @@ module SimpleLACore(
   wire [5:0] _foundTLB_T_883 = tlbHit_15_1 ? tlb_15_PS : 6'h0;
   wire [5:0] foundTLB_1_PS = _foundTLB_T_897 | _foundTLB_T_883;
   wire  _oddPG_T_3 = foundTLB_1_PS == 6'hc;
-  wire  oddPG_1 = foundTLB_1_PS == 6'hc ? EXVA[12] : EXVA[22];
+  wire  oddPG_1 = foundTLB_1_PS == 6'hc ? EXVA[12] : EXVA[21];
   wire  _foundTLB_T_480 = tlbHit_15_1 & tlb_15_P1_V;
   wire  foundTLB_1_P1_V = tlbHit_0_1 & tlb_0_P1_V | tlbHit_1_1 & tlb_1_P1_V | tlbHit_2_1 & tlb_2_P1_V | tlbHit_3_1 &
     tlb_3_P1_V | tlbHit_4_1 & tlb_4_P1_V | tlbHit_5_1 & tlb_5_P1_V | tlbHit_6_1 & tlb_6_P1_V | tlbHit_7_1 & tlb_7_P1_V
@@ -1621,7 +1621,7 @@ module SimpleLACore(
   wire [19:0] foundTLB_P0_PPN = _foundTLB_T_308 | _foundTLB_T_294;
   wire [19:0] foundP_PPN = oddPG ? foundTLB_P1_PPN : foundTLB_P0_PPN;
   wire [31:0] _pa_T_6 = {foundP_PPN,PC[11:0]};
-  wire [21:0] _pa_T_9 = {foundP_PPN[19:10],PC[21:10]};
+  wire [21:0] _pa_T_9 = {foundP_PPN[19:9],PC[20:10]};
   wire [31:0] _pa_T_10 = _oddPG_T ? _pa_T_6 : {{10'd0}, _pa_T_9};
   wire [31:0] _GEN_6 = PC[31:29] == csrs_28_VSEG & (csrs_28_PLV0 & _T_12 | csrs_28_PLV3 & _T_14) ? _pa_T_3 : _pa_T_10;
   wire [31:0] pa = PC[31:29] == csrs_27_VSEG & (csrs_27_PLV0 & crmd_PLV == 2'h0 | csrs_27_PLV3 & crmd_PLV == 2'h3) ?
@@ -1897,7 +1897,7 @@ module SimpleLACore(
   wire [19:0] foundTLB_1_P0_PPN = _foundTLB_T_773 | _foundTLB_T_759;
   wire [19:0] foundP_1_PPN = oddPG_1 ? foundTLB_1_P1_PPN : foundTLB_1_P0_PPN;
   wire [31:0] _pa_T_17 = {foundP_1_PPN,EXVA[11:0]};
-  wire [21:0] _pa_T_20 = {foundP_1_PPN[19:10],EXVA[21:10]};
+  wire [21:0] _pa_T_20 = {foundP_1_PPN[19:9],EXVA[20:10]};
   wire [31:0] _pa_T_21 = _oddPG_T_3 ? _pa_T_17 : {{10'd0}, _pa_T_20};
   wire [31:0] _GEN_78 = EXVA[31:29] == csrs_28_VSEG & (csrs_28_PLV0 & _T_12 | csrs_28_PLV3 & _T_14) ? _pa_T_14 :
     _pa_T_21;
