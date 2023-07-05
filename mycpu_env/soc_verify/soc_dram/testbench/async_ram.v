@@ -1,5 +1,5 @@
 module async_ram #(
-    parameter ADDR_WIDTH = 14,
+    parameter ADDR_WIDTH = 15,
     parameter DATA_WIDTH = 32,
     parameter DEPTH = 1 << ADDR_WIDTH
 )(
@@ -39,7 +39,7 @@ end
 endmodule
 
 module inst_ram #(
-	parameter ADDR_WIDTH = 14,
+	parameter ADDR_WIDTH = 15,
 	parameter DATA_WIDTH = 32,
 	parameter DEPTH = 1 << ADDR_WIDTH
 )
@@ -64,7 +64,7 @@ module inst_ram #(
 endmodule
 
 module data_ram #(
-	parameter ADDR_WIDTH = 14,
+	parameter ADDR_WIDTH = 15,
 	parameter DATA_WIDTH = 32,
 	parameter DEPTH = 1 << ADDR_WIDTH
 )
