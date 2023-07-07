@@ -755,6 +755,8 @@ inst_test:
 #endif 
 
 #if TEST7 
+    bl test6_init
+    
     bl n71_tlb_ex_test
     bl idle_1s
 
@@ -763,6 +765,8 @@ inst_test:
 #endif
 
 #if TEST8
+    bl test6_init
+
     bl n73_icacop_op0
     bl idle_1s
 
