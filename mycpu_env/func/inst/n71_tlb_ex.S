@@ -29,11 +29,6 @@ LEAF(n71_tlb_ex_test)
     FILL_TLB_ITEM_r
     FILL_TLB_ITEM_r
     FILL_TLB_ITEM_r
-    FILL_TLB_ITEM_r
-    FILL_TLB_ITEM_r
-    FILL_TLB_ITEM_r
-    FILL_TLB_ITEM_r
-    FILL_TLB_ITEM_r
  
     li.w        t0, DATABASE
     li.w        t1, 0xffffe000
@@ -55,6 +50,10 @@ LEAF(n71_tlb_ex_test)
     or        t1, t4, t1
     li.w        t2, 0x14d
     or        t2, t4, t2
+    FILL_TLB_ITEM_r
+    FILL_TLB_ITEM_r
+    FILL_TLB_ITEM_r
+    FILL_TLB_ITEM_r
     FILL_TLB_ITEM_r
     FILL_TLB_ITEM_r
     FILL_TLB_ITEM_r

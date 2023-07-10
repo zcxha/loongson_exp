@@ -131,7 +131,7 @@ regfile u_regfile(
 assign br_offs   = ;//在这里完成br_offs信号的生成
 assign br_target = pc + br_offs;
 assign rj_eq_rd  = (rj_value == rkd_value);
-assign br_taken  = inst_bne  && !rj_eq_rd;
+assign br_taken  = valid && inst_bne  && !rj_eq_rd;
 assign nextpc    = ;//在这里实现nextpc信号的生成
 
 assign imm      = {{20{i12[11]}},i12[11:0]};

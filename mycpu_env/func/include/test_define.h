@@ -1,5 +1,6 @@
 #define TLBREBASE 0xf000
 #define DATABASE  0x1d0000
+#define CODEBASE  0x10000
 
 #define TLB_ENTRY 16
 #define TLB_IDX 4
@@ -112,9 +113,9 @@
     bne   t2, t1, inst_error
 
 
-#define FILL_TLB_4MB(ppn1, ppn2) \
-    li.w t4, ppn1 ; \
-    li.w t5, ppn2 ; \
+#define FILL_TLB_4MB(ppn) \
+    li.w t4, ppn ; \
+    li.w t5, ppn ; \
     addi.w t2, t0, 0x0 ; \
     addi.w t3, t1, 0x0 ; \
     csrwr t2, csr_tlbidx ; \
@@ -123,14 +124,14 @@
     csrwr t5, csr_tlbelo1 ; \
     tlbwr ; \
     addi.w t0, t0, 0x1 ; \
-	li.w     t5, 1<<23 ; \
+	li.w     t5, 1<<22 ; \
     add.w t1, t1, t5 
 
 #define TEST_TLBSRCH_4MB(in_asid, in_vpn, ref) \
     li.w    t1, in_asid; \
     csrwr t1, csr_asid; \
-    li.w    t2, 8<<23; \
-    li.w    t3, in_vpn<<23; \
+    li.w    t2, 8<<22; \
+    li.w    t3, in_vpn<<22; \
     add.w t1, t3, t2; \
     csrwr t1, csr_tlbehi; \
     tlbsrch; \
@@ -157,8 +158,8 @@
     csrwr zero, csr_tlbidx; \
     li.w    t1, in_asid; \
     csrwr t1, csr_asid; \
-    li.w    t2, 8<<23; \
-    li.w    t3, in_vpn<<23; \
+    li.w    t2, 8<<22; \
+    li.w    t3, in_vpn<<22; \
     add.w t1, t3, t2; \
     csrwr t1, csr_tlbehi; \
     tlbsrch; \

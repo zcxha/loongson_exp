@@ -11,8 +11,10 @@ LEAF(n78_dcacop_op2)
     csrwr   t0, csr_ticlr  
 
     li.w    t0, 0x1c008000
+    csrwr zero, csr_eentry
     csrwr t0, csr_eentry
     li.w    t1, 0x1c000000 + TLBREBASE
+    csrwr zero, csr_tlbrentry
     csrwr t1, csr_tlbrentry 
  
     la.local  t7, start
