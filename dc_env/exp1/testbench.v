@@ -27,6 +27,8 @@ reg clk;
 reg resetn;
 initial
 begin
+    $dumpfile("dump.vcd");
+    $dumpvars;
     clk = 0;
     resetn = 1'b0;
     #200;
