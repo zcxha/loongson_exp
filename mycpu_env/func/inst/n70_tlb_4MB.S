@@ -17,13 +17,13 @@ LEAF(n70_tlb_4MB)
     csrwr t2, csr_asid
 
 ###TLB item 1
-    FILL_TLB_4MB(0x00003400)
+    FILL_TLB_4MB(0x00010000)
 ###TLB item 2
-    FILL_TLB_4MB(0x00003500)
+    FILL_TLB_4MB(0x00050000)
 ###TLB item 3
-    FILL_TLB_4MB(0x00003600)
+    FILL_TLB_4MB(0x00090000)
 ###TLB item 4 G=1
-    FILL_TLB_4MB(0x00003640)
+    FILL_TLB_4MB(0x000d0040)
 
     csrwr  zero, csr_tlbehi
     csrwr  zero, csr_tlbelo0

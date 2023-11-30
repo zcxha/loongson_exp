@@ -115,7 +115,7 @@
 
 #define FILL_TLB_4MB(ppn) \
     li.w t4, ppn ; \
-    li.w t5, ppn ; \
+    li.w t5, ppn+0x20000; \
     addi.w t2, t0, 0x0 ; \
     addi.w t3, t1, 0x0 ; \
     csrwr t2, csr_tlbidx ; \
