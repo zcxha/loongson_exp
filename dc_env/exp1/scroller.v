@@ -21,7 +21,7 @@
 
 
 module scroller #(
-    parameter CNT_1S = 27'd38_196_600
+    parameter CNT_1S = 27'd100_000_000
 )(
     input         clk,
     input         resetn,
