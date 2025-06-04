@@ -112,7 +112,7 @@ wire [31:0] alu_result ;
 
 wire [31:0] mem_result;
 
-assign seq_pc       = pc + 3'h4;
+assign seq_pc       = pc + 32'h4;
 assign nextpc       = br_taken ? br_target : seq_pc;
 
 always @(posedge clk) begin
