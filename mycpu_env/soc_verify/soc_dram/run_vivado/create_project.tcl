@@ -1,8 +1,16 @@
+set ProjectDir "./project"
+
+if {[file exists $ProjectDir]} {
+    file delete -force $ProjectDir
+    puts "Folder deleted: $ProjectDir"
+}
+
 create_project -force loongson ./project -part xc7a200tfbg676-1
 
 # Add conventional sources
 add_files -scan_for_includes [glob -nocomplain ../rtl/*.v]
-add_files -scan_for_includes [glob -nocomplain ../rtl/*/*.v]
+add_files -scan_for_includes ../rtl/BRIDGE
+add_files -scan_for_includes ../rtl/CONFREG
 
 # Add IPs
 add_files -quiet [glob -nocomplain ../rtl/xilinx_ip/*/*.xci]
