@@ -1,6 +1,6 @@
 obj_path = ./obj
 inst_srcs = $(wildcard ./inst/*.S)
-EXP = 0
+EXP = 6
 
 default: 
 	make all

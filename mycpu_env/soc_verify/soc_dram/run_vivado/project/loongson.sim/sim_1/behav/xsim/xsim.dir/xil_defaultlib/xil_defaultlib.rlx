@@ -1,0 +1,21 @@
+0.6
+2019.2
+Nov  6 2019
+21:57:16
+E:/loongson/cdp_ede_local/mycpu_env/myCPU/alu.v,1751629940,verilog,,E:/loongson/cdp_ede_local/mycpu_env/soc_verify/soc_dram/testbench/async_ram.v,,alu,,,../../../../../../rtl/xilinx_ip/clk_pll,,,,,
+E:/loongson/cdp_ede_local/mycpu_env/myCPU/decoder_2_4.v,1751333638,verilog,,E:/loongson/cdp_ede_local/mycpu_env/myCPU/decoder_4_16.v,,decoder_2_4,,,../../../../../../rtl/xilinx_ip/clk_pll,,,,,
+E:/loongson/cdp_ede_local/mycpu_env/myCPU/decoder_4_16.v,1751333638,verilog,,E:/loongson/cdp_ede_local/mycpu_env/myCPU/decoder_5_32.v,,decoder_4_16,,,../../../../../../rtl/xilinx_ip/clk_pll,,,,,
+E:/loongson/cdp_ede_local/mycpu_env/myCPU/decoder_5_32.v,1751333638,verilog,,E:/loongson/cdp_ede_local/mycpu_env/myCPU/decoder_6_64.v,,decoder_5_32,,,../../../../../../rtl/xilinx_ip/clk_pll,,,,,
+E:/loongson/cdp_ede_local/mycpu_env/myCPU/decoder_6_64.v,1751333638,verilog,,E:/loongson/cdp_ede_local/mycpu_env/myCPU/mycpu_top.v,,decoder_6_64,,,../../../../../../rtl/xilinx_ip/clk_pll,,,,,
+E:/loongson/cdp_ede_local/mycpu_env/myCPU/mycpu_top.v,1751628993,verilog,,E:/loongson/cdp_ede_local/mycpu_env/myCPU/regfile.v,,mycpu_top,,,../../../../../../rtl/xilinx_ip/clk_pll,,,,,
+E:/loongson/cdp_ede_local/mycpu_env/myCPU/regfile.v,1751333638,verilog,,E:/loongson/cdp_ede_local/mycpu_env/soc_verify/soc_dram/rtl/soc_lite_top.v,,regfile,,,../../../../../../rtl/xilinx_ip/clk_pll,,,,,
+E:/loongson/cdp_ede_local/mycpu_env/soc_verify/soc_dram/rtl/BRIDGE/bridge_1x2.v,1751333638,verilog,,E:/loongson/cdp_ede_local/mycpu_env/soc_verify/soc_dram/rtl/CONFREG/confreg.v,,bridge_1x2,,,../../../../../../rtl/xilinx_ip/clk_pll,,,,,
+E:/loongson/cdp_ede_local/mycpu_env/soc_verify/soc_dram/rtl/CONFREG/confreg.v,1751333638,verilog,,E:/loongson/cdp_ede_local/mycpu_env/myCPU/decoder_2_4.v,,confreg,,,../../../../../../rtl/xilinx_ip/clk_pll,,,,,
+E:/loongson/cdp_ede_local/mycpu_env/soc_verify/soc_dram/rtl/soc_lite_top.v,1751333638,verilog,,E:/loongson/cdp_ede_local/mycpu_env/soc_verify/soc_dram/testbench/mycpu_tb.v,,soc_lite_top,,,../../../../../../rtl/xilinx_ip/clk_pll,,,,,
+E:/loongson/cdp_ede_local/mycpu_env/soc_verify/soc_dram/rtl/xilinx_ip/clk_pll/clk_pll.v,1751550576,verilog,,E:/loongson/cdp_ede_local/mycpu_env/soc_verify/soc_dram/rtl/xilinx_ip/data_ram/sim/data_ram.v,,clk_pll,,,../../../../../../rtl/xilinx_ip/clk_pll,,,,,
+E:/loongson/cdp_ede_local/mycpu_env/soc_verify/soc_dram/rtl/xilinx_ip/clk_pll/clk_pll_clk_wiz.v,1751550576,verilog,,E:/loongson/cdp_ede_local/mycpu_env/soc_verify/soc_dram/rtl/xilinx_ip/clk_pll/clk_pll.v,,clk_pll_clk_wiz,,,../../../../../../rtl/xilinx_ip/clk_pll,,,,,
+E:/loongson/cdp_ede_local/mycpu_env/soc_verify/soc_dram/rtl/xilinx_ip/data_ram/sim/data_ram.v,1751596561,verilog,,E:/loongson/cdp_ede_local/mycpu_env/soc_verify/soc_dram/rtl/xilinx_ip/inst_ram/sim/inst_ram.v,,,,,../../../../../../rtl/xilinx_ip/clk_pll,,,,,
+E:/loongson/cdp_ede_local/mycpu_env/soc_verify/soc_dram/rtl/xilinx_ip/inst_ram/sim/inst_ram.v,1751596525,verilog,,E:/loongson/cdp_ede_local/mycpu_env/myCPU/alu.v,,,,,../../../../../../rtl/xilinx_ip/clk_pll,,,,,
+E:/loongson/cdp_ede_local/mycpu_env/soc_verify/soc_dram/run_vivado/project/loongson.sim/sim_1/behav/xsim/glbl.v,1573089660,verilog,,,,glbl,,,,,,,,
+E:/loongson/cdp_ede_local/mycpu_env/soc_verify/soc_dram/testbench/async_ram.v,1751333638,verilog,,E:/loongson/cdp_ede_local/mycpu_env/soc_verify/soc_dram/rtl/BRIDGE/bridge_1x2.v,,async_ram;data_ram;inst_ram,,,../../../../../../rtl/xilinx_ip/clk_pll,,,,,
+E:/loongson/cdp_ede_local/mycpu_env/soc_verify/soc_dram/testbench/mycpu_tb.v,1751333638,verilog,,,,tb_top,,,../../../../../../rtl/xilinx_ip/clk_pll,,,,,

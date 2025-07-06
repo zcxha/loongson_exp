@@ -1,5 +1,5 @@
 obj_path = ../obj
-EXP = 0
+EXP = 6
 
 srcs = $(wildcard *.S)
 raws = $(patsubst %.S, ${obj_path}/%.s, $(srcs))

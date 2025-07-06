@@ -1,0 +1,82 @@
+#-----------------------------------------------------------
+# Vivado v2019.2 (64-bit)
+# SW Build 2708876 on Wed Nov  6 21:40:23 MST 2019
+# IP Build 2700528 on Thu Nov  7 00:09:20 MST 2019
+# Start of session at: Fri Jul  4 18:41:29 2025
+# Process ID: 17836
+# Current directory: E:/loongson/cdp_ede_local/mycpu_env/gettrace
+# Command line: vivado.exe -gui_launcher_event rodinguilauncherevent17552 E:\loongson\cdp_ede_local\mycpu_env\gettrace\gettrace.xpr
+# Log file: E:/loongson/cdp_ede_local/mycpu_env/gettrace/vivado.log
+# Journal file: E:/loongson/cdp_ede_local/mycpu_env/gettrace\vivado.jou
+#-----------------------------------------------------------
+start_gui
+open_project E:/loongson/cdp_ede_local/mycpu_env/gettrace/gettrace.xpr
+update_compile_order -fileset sources_1
+launch_simulation
+source tb_top.tcl
+run all
+close_sim
+close_project
+open_project E:/loongson/cdp_ede_local/mycpu_env/soc_verify/soc_dram/run_vivado/project/loongson.xpr
+update_compile_order -fileset sources_1
+launch_simulation
+source tb_top.tcl
+run all
+close_sim
+launch_simulation
+source tb_top.tcl
+run all
+relaunch_sim
+run all
+current_wave_config {Untitled 3}
+add_wave {{/tb_top/soc_lite/cpu}} 
+relaunch_sim
+close_sim
+launch_simulation
+source tb_top.tcl
+run all
+current_wave_config {Untitled 4}
+add_wave {{/tb_top/soc_lite/cpu}} 
+close_sim
+launch_simulation
+source tb_top.tcl
+run all
+current_wave_config {Untitled 5}
+add_wave {{/tb_top/soc_lite/cpu}} 
+close_sim
+launch_simulation
+launch_simulation
+source tb_top.tcl
+run all
+run all
+relaunch_sim
+run all
+current_wave_config {Untitled 6}
+add_wave {{/tb_top/soc_lite/cpu}} 
+current_wave_config {Untitled 6}
+add_wave {{/tb_top/soc_lite/cpu/u_alu}} 
+close_sim
+launch_simulation
+source tb_top.tcl
+run all
+current_wave_config {Untitled 7}
+add_wave {{/tb_top/soc_lite/cpu}} 
+close_sim
+launch_simulation
+source tb_top.tcl
+run all
+current_wave_config {Untitled 8}
+add_wave {{/tb_top/soc_lite/cpu}} 
+close_sim
+launch_simulation
+source tb_top.tcl
+run all
+close_sim
+launch_simulation
+source tb_top.tcl
+run all
+close_sim
+launch_simulation
+source tb_top.tcl
+run all
+close_sim

@@ -1,0 +1,822 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<wave_config>
+   <wave_state>
+   </wave_state>
+   <db_ref_list>
+      <db_ref path="tb_top_behav.wdb" id="1">
+         <top_modules>
+            <top_module name="glbl" />
+            <top_module name="tb_top" />
+         </top_modules>
+      </db_ref>
+   </db_ref_list>
+   <zoom_setting>
+      <ZoomStartTime time="2009422fs"></ZoomStartTime>
+      <ZoomEndTime time="2065523fs"></ZoomEndTime>
+      <Cursor1Time time="2031122fs"></Cursor1Time>
+   </zoom_setting>
+   <column_width_setting>
+      <NameColumnWidth column_width="226"></NameColumnWidth>
+      <ValueColumnWidth column_width="323"></ValueColumnWidth>
+   </column_width_setting>
+   <WVObjectSize size="3" />
+   <wvobject fp_name="group606" type="group">
+      <obj_property name="label">tb</obj_property>
+      <obj_property name="DisplayName">label</obj_property>
+      <wvobject fp_name="/tb_top/resetn" type="logic">
+         <obj_property name="ElementShortName">resetn</obj_property>
+         <obj_property name="ObjectShortName">resetn</obj_property>
+      </wvobject>
+      <wvobject fp_name="/tb_top/clk" type="logic">
+         <obj_property name="ElementShortName">clk</obj_property>
+         <obj_property name="ObjectShortName">clk</obj_property>
+      </wvobject>
+      <wvobject fp_name="/tb_top/led" type="array">
+         <obj_property name="ElementShortName">led[15:0]</obj_property>
+         <obj_property name="ObjectShortName">led[15:0]</obj_property>
+      </wvobject>
+      <wvobject fp_name="/tb_top/led_rg0" type="array">
+         <obj_property name="ElementShortName">led_rg0[1:0]</obj_property>
+         <obj_property name="ObjectShortName">led_rg0[1:0]</obj_property>
+      </wvobject>
+      <wvobject fp_name="/tb_top/led_rg1" type="array">
+         <obj_property name="ElementShortName">led_rg1[1:0]</obj_property>
+         <obj_property name="ObjectShortName">led_rg1[1:0]</obj_property>
+      </wvobject>
+      <wvobject fp_name="/tb_top/num_csn" type="array">
+         <obj_property name="ElementShortName">num_csn[7:0]</obj_property>
+         <obj_property name="ObjectShortName">num_csn[7:0]</obj_property>
+      </wvobject>
+      <wvobject fp_name="/tb_top/num_a_g" type="array">
+         <obj_property name="ElementShortName">num_a_g[6:0]</obj_property>
+         <obj_property name="ObjectShortName">num_a_g[6:0]</obj_property>
+      </wvobject>
+      <wvobject fp_name="/tb_top/switch" type="array">
+         <obj_property name="ElementShortName">switch[7:0]</obj_property>
+         <obj_property name="ObjectShortName">switch[7:0]</obj_property>
+      </wvobject>
+      <wvobject fp_name="/tb_top/btn_key_col" type="array">
+         <obj_property name="ElementShortName">btn_key_col[3:0]</obj_property>
+         <obj_property name="ObjectShortName">btn_key_col[3:0]</obj_property>
+      </wvobject>
+      <wvobject fp_name="/tb_top/btn_key_row" type="array">
+         <obj_property name="ElementShortName">btn_key_row[3:0]</obj_property>
+         <obj_property name="ObjectShortName">btn_key_row[3:0]</obj_property>
+      </wvobject>
+      <wvobject fp_name="/tb_top/btn_step" type="array">
+         <obj_property name="ElementShortName">btn_step[1:0]</obj_property>
+         <obj_property name="ObjectShortName">btn_step[1:0]</obj_property>
+      </wvobject>
+      <wvobject fp_name="/tb_top/soc_clk" type="logic">
+         <obj_property name="ElementShortName">soc_clk</obj_property>
+         <obj_property name="ObjectShortName">soc_clk</obj_property>
+      </wvobject>
+      <wvobject fp_name="/tb_top/debug_wb_pc" type="array">
+         <obj_property name="ElementShortName">debug_wb_pc[31:0]</obj_property>
+         <obj_property name="ObjectShortName">debug_wb_pc[31:0]</obj_property>
+      </wvobject>
+      <wvobject fp_name="/tb_top/debug_wb_rf_we" type="array">
+         <obj_property name="ElementShortName">debug_wb_rf_we[3:0]</obj_property>
+         <obj_property name="ObjectShortName">debug_wb_rf_we[3:0]</obj_property>
+      </wvobject>
+      <wvobject fp_name="/tb_top/debug_wb_rf_wnum" type="array">
+         <obj_property name="ElementShortName">debug_wb_rf_wnum[4:0]</obj_property>
+         <obj_property name="ObjectShortName">debug_wb_rf_wnum[4:0]</obj_property>
+      </wvobject>
+      <wvobject fp_name="/tb_top/debug_wb_rf_wdata" type="array">
+         <obj_property name="ElementShortName">debug_wb_rf_wdata[31:0]</obj_property>
+         <obj_property name="ObjectShortName">debug_wb_rf_wdata[31:0]</obj_property>
+      </wvobject>
+      <wvobject fp_name="/tb_top/trace_ref" type="array">
+         <obj_property name="ElementShortName">trace_ref[31:0]</obj_property>
+         <obj_property name="ObjectShortName">trace_ref[31:0]</obj_property>
+      </wvobject>
+      <wvobject fp_name="/tb_top/trace_cmp_flag" type="logic">
+         <obj_property name="ElementShortName">trace_cmp_flag</obj_property>
+         <obj_property name="ObjectShortName">trace_cmp_flag</obj_property>
+      </wvobject>
+      <wvobject fp_name="/tb_top/debug_end" type="logic">
+         <obj_property name="ElementShortName">debug_end</obj_property>
+         <obj_property name="ObjectShortName">debug_end</obj_property>
+      </wvobject>
+      <wvobject fp_name="/tb_top/ref_wb_pc" type="array">
+         <obj_property name="ElementShortName">ref_wb_pc[31:0]</obj_property>
+         <obj_property name="ObjectShortName">ref_wb_pc[31:0]</obj_property>
+      </wvobject>
+      <wvobject fp_name="/tb_top/ref_wb_rf_wnum" type="array">
+         <obj_property name="ElementShortName">ref_wb_rf_wnum[4:0]</obj_property>
+         <obj_property name="ObjectShortName">ref_wb_rf_wnum[4:0]</obj_property>
+      </wvobject>
+      <wvobject fp_name="/tb_top/ref_wb_rf_wdata" type="array">
+         <obj_property name="ElementShortName">ref_wb_rf_wdata[31:0]</obj_property>
+         <obj_property name="ObjectShortName">ref_wb_rf_wdata[31:0]</obj_property>
+      </wvobject>
+      <wvobject fp_name="/tb_top/a" type="array">
+         <obj_property name="ElementShortName">a[31:0]</obj_property>
+         <obj_property name="ObjectShortName">a[31:0]</obj_property>
+      </wvobject>
+      <wvobject fp_name="/tb_top/debug_wb_rf_wdata_v" type="array">
+         <obj_property name="ElementShortName">debug_wb_rf_wdata_v[31:0]</obj_property>
+         <obj_property name="ObjectShortName">debug_wb_rf_wdata_v[31:0]</obj_property>
+      </wvobject>
+      <wvobject fp_name="/tb_top/ref_wb_rf_wdata_v" type="array">
+         <obj_property name="ElementShortName">ref_wb_rf_wdata_v[31:0]</obj_property>
+         <obj_property name="ObjectShortName">ref_wb_rf_wdata_v[31:0]</obj_property>
+      </wvobject>
+      <wvobject fp_name="/tb_top/debug_wb_err" type="logic">
+         <obj_property name="ElementShortName">debug_wb_err</obj_property>
+         <obj_property name="ObjectShortName">debug_wb_err</obj_property>
+      </wvobject>
+      <wvobject fp_name="/tb_top/err_count" type="array">
+         <obj_property name="ElementShortName">err_count[7:0]</obj_property>
+         <obj_property name="ObjectShortName">err_count[7:0]</obj_property>
+      </wvobject>
+      <wvobject fp_name="/tb_top/confreg_num_reg" type="array">
+         <obj_property name="ElementShortName">confreg_num_reg[31:0]</obj_property>
+         <obj_property name="ObjectShortName">confreg_num_reg[31:0]</obj_property>
+      </wvobject>
+      <wvobject fp_name="/tb_top/confreg_num_reg_r" type="array">
+         <obj_property name="ElementShortName">confreg_num_reg_r[31:0]</obj_property>
+         <obj_property name="ObjectShortName">confreg_num_reg_r[31:0]</obj_property>
+      </wvobject>
+      <wvobject fp_name="/tb_top/uart_display" type="logic">
+         <obj_property name="ElementShortName">uart_display</obj_property>
+         <obj_property name="ObjectShortName">uart_display</obj_property>
+      </wvobject>
+      <wvobject fp_name="/tb_top/uart_data" type="array">
+         <obj_property name="ElementShortName">uart_data[7:0]</obj_property>
+         <obj_property name="ObjectShortName">uart_data[7:0]</obj_property>
+      </wvobject>
+      <wvobject fp_name="/tb_top/global_err" type="logic">
+         <obj_property name="ElementShortName">global_err</obj_property>
+         <obj_property name="ObjectShortName">global_err</obj_property>
+      </wvobject>
+      <wvobject fp_name="/tb_top/test_end" type="logic">
+         <obj_property name="ElementShortName">test_end</obj_property>
+         <obj_property name="ObjectShortName">test_end</obj_property>
+      </wvobject>
+   </wvobject>
+   <wvobject fp_name="group750" type="group">
+      <obj_property name="label">cpu</obj_property>
+      <obj_property name="DisplayName">label</obj_property>
+      <obj_property name="isExpanded"></obj_property>
+      <wvobject fp_name="group2341" type="group">
+         <obj_property name="label">IOwire</obj_property>
+         <obj_property name="DisplayName">label</obj_property>
+         <obj_property name="isExpanded"></obj_property>
+         <wvobject fp_name="/tb_top/soc_lite/cpu/clk" type="logic">
+            <obj_property name="ElementShortName">clk</obj_property>
+            <obj_property name="ObjectShortName">clk</obj_property>
+         </wvobject>
+         <wvobject fp_name="/tb_top/soc_lite/cpu/resetn" type="logic">
+            <obj_property name="ElementShortName">resetn</obj_property>
+            <obj_property name="ObjectShortName">resetn</obj_property>
+         </wvobject>
+         <wvobject fp_name="/tb_top/soc_lite/cpu/inst_sram_en" type="logic">
+            <obj_property name="ElementShortName">inst_sram_en</obj_property>
+            <obj_property name="ObjectShortName">inst_sram_en</obj_property>
+         </wvobject>
+         <wvobject fp_name="/tb_top/soc_lite/cpu/inst_sram_we" type="array">
+            <obj_property name="ElementShortName">inst_sram_we[3:0]</obj_property>
+            <obj_property name="ObjectShortName">inst_sram_we[3:0]</obj_property>
+         </wvobject>
+         <wvobject fp_name="/tb_top/soc_lite/cpu/inst_sram_addr" type="array">
+            <obj_property name="ElementShortName">inst_sram_addr[31:0]</obj_property>
+            <obj_property name="ObjectShortName">inst_sram_addr[31:0]</obj_property>
+         </wvobject>
+         <wvobject fp_name="/tb_top/soc_lite/cpu/inst_sram_wdata" type="array">
+            <obj_property name="ElementShortName">inst_sram_wdata[31:0]</obj_property>
+            <obj_property name="ObjectShortName">inst_sram_wdata[31:0]</obj_property>
+         </wvobject>
+         <wvobject fp_name="/tb_top/soc_lite/cpu/inst_sram_rdata" type="array">
+            <obj_property name="ElementShortName">inst_sram_rdata[31:0]</obj_property>
+            <obj_property name="ObjectShortName">inst_sram_rdata[31:0]</obj_property>
+         </wvobject>
+         <wvobject fp_name="/tb_top/soc_lite/cpu/data_sram_en" type="logic">
+            <obj_property name="ElementShortName">data_sram_en</obj_property>
+            <obj_property name="ObjectShortName">data_sram_en</obj_property>
+         </wvobject>
+         <wvobject fp_name="/tb_top/soc_lite/cpu/data_sram_we" type="array">
+            <obj_property name="ElementShortName">data_sram_we[3:0]</obj_property>
+            <obj_property name="ObjectShortName">data_sram_we[3:0]</obj_property>
+         </wvobject>
+         <wvobject fp_name="/tb_top/soc_lite/cpu/data_sram_addr" type="array">
+            <obj_property name="ElementShortName">data_sram_addr[31:0]</obj_property>
+            <obj_property name="ObjectShortName">data_sram_addr[31:0]</obj_property>
+         </wvobject>
+         <wvobject fp_name="/tb_top/soc_lite/cpu/data_sram_wdata" type="array">
+            <obj_property name="ElementShortName">data_sram_wdata[31:0]</obj_property>
+            <obj_property name="ObjectShortName">data_sram_wdata[31:0]</obj_property>
+         </wvobject>
+         <wvobject fp_name="/tb_top/soc_lite/cpu/data_sram_rdata" type="array">
+            <obj_property name="ElementShortName">data_sram_rdata[31:0]</obj_property>
+            <obj_property name="ObjectShortName">data_sram_rdata[31:0]</obj_property>
+         </wvobject>
+         <wvobject fp_name="/tb_top/soc_lite/cpu/debug_wb_pc" type="array">
+            <obj_property name="ElementShortName">debug_wb_pc[31:0]</obj_property>
+            <obj_property name="ObjectShortName">debug_wb_pc[31:0]</obj_property>
+         </wvobject>
+         <wvobject fp_name="/tb_top/soc_lite/cpu/debug_wb_rf_we" type="array">
+            <obj_property name="ElementShortName">debug_wb_rf_we[3:0]</obj_property>
+            <obj_property name="ObjectShortName">debug_wb_rf_we[3:0]</obj_property>
+         </wvobject>
+         <wvobject fp_name="/tb_top/soc_lite/cpu/debug_wb_rf_wnum" type="array">
+            <obj_property name="ElementShortName">debug_wb_rf_wnum[4:0]</obj_property>
+            <obj_property name="ObjectShortName">debug_wb_rf_wnum[4:0]</obj_property>
+         </wvobject>
+         <wvobject fp_name="/tb_top/soc_lite/cpu/debug_wb_rf_wdata" type="array">
+            <obj_property name="ElementShortName">debug_wb_rf_wdata[31:0]</obj_property>
+            <obj_property name="ObjectShortName">debug_wb_rf_wdata[31:0]</obj_property>
+         </wvobject>
+      </wvobject>
+      <wvobject fp_name="/tb_top/soc_lite/cpu/reset" type="logic">
+         <obj_property name="ElementShortName">reset</obj_property>
+         <obj_property name="ObjectShortName">reset</obj_property>
+      </wvobject>
+      <wvobject fp_name="/tb_top/soc_lite/cpu/valid" type="logic">
+         <obj_property name="ElementShortName">valid</obj_property>
+         <obj_property name="ObjectShortName">valid</obj_property>
+      </wvobject>
+      <wvobject fp_name="/tb_top/soc_lite/cpu/id_pc" type="array">
+         <obj_property name="ElementShortName">id_pc[31:0]</obj_property>
+         <obj_property name="ObjectShortName">id_pc[31:0]</obj_property>
+      </wvobject>
+      <wvobject fp_name="/tb_top/soc_lite/cpu/id_inst" type="array">
+         <obj_property name="ElementShortName">id_inst[31:0]</obj_property>
+         <obj_property name="ObjectShortName">id_inst[31:0]</obj_property>
+      </wvobject>
+      <wvobject type="divider" fp_name="divider759">
+         <obj_property name="label">id/ex</obj_property>
+         <obj_property name="DisplayName">label</obj_property>
+      </wvobject>
+      <wvobject fp_name="group2344" type="group">
+         <obj_property name="label">expl</obj_property>
+         <obj_property name="DisplayName">label</obj_property>
+         <wvobject fp_name="/tb_top/soc_lite/cpu/ex_allowin" type="logic">
+            <obj_property name="ElementShortName">ex_allowin</obj_property>
+            <obj_property name="ObjectShortName">ex_allowin</obj_property>
+         </wvobject>
+         <wvobject fp_name="/tb_top/soc_lite/cpu/ex_ready_go" type="logic">
+            <obj_property name="ElementShortName">ex_ready_go</obj_property>
+            <obj_property name="ObjectShortName">ex_ready_go</obj_property>
+         </wvobject>
+         <wvobject fp_name="/tb_top/soc_lite/cpu/ex_to_mem_valid" type="logic">
+            <obj_property name="ElementShortName">ex_to_mem_valid</obj_property>
+            <obj_property name="ObjectShortName">ex_to_mem_valid</obj_property>
+         </wvobject>
+         <wvobject fp_name="/tb_top/soc_lite/cpu/ex_pc" type="array">
+            <obj_property name="ElementShortName">ex_pc[31:0]</obj_property>
+            <obj_property name="ObjectShortName">ex_pc[31:0]</obj_property>
+         </wvobject>
+         <wvobject fp_name="/tb_top/soc_lite/cpu/ex_inst" type="array">
+            <obj_property name="ElementShortName">ex_inst[31:0]</obj_property>
+            <obj_property name="ObjectShortName">ex_inst[31:0]</obj_property>
+         </wvobject>
+         <wvobject fp_name="/tb_top/soc_lite/cpu/ex_alu_src1" type="array">
+            <obj_property name="ElementShortName">ex_alu_src1[31:0]</obj_property>
+            <obj_property name="ObjectShortName">ex_alu_src1[31:0]</obj_property>
+         </wvobject>
+         <wvobject fp_name="/tb_top/soc_lite/cpu/ex_alu_src2" type="array">
+            <obj_property name="ElementShortName">ex_alu_src2[31:0]</obj_property>
+            <obj_property name="ObjectShortName">ex_alu_src2[31:0]</obj_property>
+         </wvobject>
+         <wvobject fp_name="/tb_top/soc_lite/cpu/ex_alu_op" type="array">
+            <obj_property name="ElementShortName">ex_alu_op[11:0]</obj_property>
+            <obj_property name="ObjectShortName">ex_alu_op[11:0]</obj_property>
+         </wvobject>
+         <wvobject fp_name="/tb_top/soc_lite/cpu/ex_mem_we" type="logic">
+            <obj_property name="ElementShortName">ex_mem_we</obj_property>
+            <obj_property name="ObjectShortName">ex_mem_we</obj_property>
+         </wvobject>
+         <wvobject fp_name="/tb_top/soc_lite/cpu/ex_gr_we" type="logic">
+            <obj_property name="ElementShortName">ex_gr_we</obj_property>
+            <obj_property name="ObjectShortName">ex_gr_we</obj_property>
+         </wvobject>
+         <wvobject fp_name="/tb_top/soc_lite/cpu/ex_dest" type="array">
+            <obj_property name="ElementShortName">ex_dest[4:0]</obj_property>
+            <obj_property name="ObjectShortName">ex_dest[4:0]</obj_property>
+         </wvobject>
+         <wvobject fp_name="/tb_top/soc_lite/cpu/ex_res_from_mem" type="logic">
+            <obj_property name="ElementShortName">ex_res_from_mem</obj_property>
+            <obj_property name="ObjectShortName">ex_res_from_mem</obj_property>
+         </wvobject>
+         <wvobject fp_name="/tb_top/soc_lite/cpu/ex_rkd_value" type="array">
+            <obj_property name="ElementShortName">ex_rkd_value[31:0]</obj_property>
+            <obj_property name="ObjectShortName">ex_rkd_value[31:0]</obj_property>
+         </wvobject>
+      </wvobject>
+      <wvobject type="divider" fp_name="divider760">
+         <obj_property name="label">ex/mem</obj_property>
+         <obj_property name="DisplayName">label</obj_property>
+      </wvobject>
+      <wvobject fp_name="group2343" type="group">
+         <obj_property name="label">wbpl</obj_property>
+         <obj_property name="DisplayName">label</obj_property>
+         <wvobject fp_name="group2342" type="group">
+            <obj_property name="label">mempl</obj_property>
+            <obj_property name="DisplayName">label</obj_property>
+            <wvobject fp_name="/tb_top/soc_lite/cpu/mem_allowin" type="logic">
+               <obj_property name="ElementShortName">mem_allowin</obj_property>
+               <obj_property name="ObjectShortName">mem_allowin</obj_property>
+            </wvobject>
+            <wvobject fp_name="/tb_top/soc_lite/cpu/mem_ready_go" type="logic">
+               <obj_property name="ElementShortName">mem_ready_go</obj_property>
+               <obj_property name="ObjectShortName">mem_ready_go</obj_property>
+            </wvobject>
+            <wvobject fp_name="/tb_top/soc_lite/cpu/mem_to_wb_valid" type="logic">
+               <obj_property name="ElementShortName">mem_to_wb_valid</obj_property>
+               <obj_property name="ObjectShortName">mem_to_wb_valid</obj_property>
+            </wvobject>
+            <wvobject fp_name="/tb_top/soc_lite/cpu/mem_pc" type="array">
+               <obj_property name="ElementShortName">mem_pc[31:0]</obj_property>
+               <obj_property name="ObjectShortName">mem_pc[31:0]</obj_property>
+            </wvobject>
+            <wvobject fp_name="/tb_top/soc_lite/cpu/mem_inst" type="array">
+               <obj_property name="ElementShortName">mem_inst[31:0]</obj_property>
+               <obj_property name="ObjectShortName">mem_inst[31:0]</obj_property>
+            </wvobject>
+            <wvobject fp_name="/tb_top/soc_lite/cpu/mem_mem_we" type="logic">
+               <obj_property name="ElementShortName">mem_mem_we</obj_property>
+               <obj_property name="ObjectShortName">mem_mem_we</obj_property>
+            </wvobject>
+            <wvobject fp_name="/tb_top/soc_lite/cpu/mem_gr_we" type="logic">
+               <obj_property name="ElementShortName">mem_gr_we</obj_property>
+               <obj_property name="ObjectShortName">mem_gr_we</obj_property>
+            </wvobject>
+            <wvobject fp_name="/tb_top/soc_lite/cpu/mem_dest" type="array">
+               <obj_property name="ElementShortName">mem_dest[4:0]</obj_property>
+               <obj_property name="ObjectShortName">mem_dest[4:0]</obj_property>
+            </wvobject>
+            <wvobject fp_name="/tb_top/soc_lite/cpu/mem_res_from_mem" type="logic">
+               <obj_property name="ElementShortName">mem_res_from_mem</obj_property>
+               <obj_property name="ObjectShortName">mem_res_from_mem</obj_property>
+            </wvobject>
+            <wvobject fp_name="/tb_top/soc_lite/cpu/mem_rkd_value" type="array">
+               <obj_property name="ElementShortName">mem_rkd_value[31:0]</obj_property>
+               <obj_property name="ObjectShortName">mem_rkd_value[31:0]</obj_property>
+            </wvobject>
+            <wvobject fp_name="/tb_top/soc_lite/cpu/mem_alu_result" type="array">
+               <obj_property name="ElementShortName">mem_alu_result[31:0]</obj_property>
+               <obj_property name="ObjectShortName">mem_alu_result[31:0]</obj_property>
+            </wvobject>
+         </wvobject>
+         <wvobject type="divider" fp_name="divider761">
+            <obj_property name="label">mem/wb</obj_property>
+            <obj_property name="DisplayName">label</obj_property>
+         </wvobject>
+         <wvobject fp_name="/tb_top/soc_lite/cpu/wb_pc" type="array">
+            <obj_property name="ElementShortName">wb_pc[31:0]</obj_property>
+            <obj_property name="ObjectShortName">wb_pc[31:0]</obj_property>
+         </wvobject>
+         <wvobject fp_name="/tb_top/soc_lite/cpu/wb_inst" type="array">
+            <obj_property name="ElementShortName">wb_inst[31:0]</obj_property>
+            <obj_property name="ObjectShortName">wb_inst[31:0]</obj_property>
+         </wvobject>
+         <wvobject fp_name="/tb_top/soc_lite/cpu/wb_gr_we" type="logic">
+            <obj_property name="ElementShortName">wb_gr_we</obj_property>
+            <obj_property name="ObjectShortName">wb_gr_we</obj_property>
+         </wvobject>
+         <wvobject fp_name="/tb_top/soc_lite/cpu/wb_dest" type="array">
+            <obj_property name="ElementShortName">wb_dest[4:0]</obj_property>
+            <obj_property name="ObjectShortName">wb_dest[4:0]</obj_property>
+         </wvobject>
+         <wvobject fp_name="/tb_top/soc_lite/cpu/wb_final_result" type="array">
+            <obj_property name="ElementShortName">wb_final_result[31:0]</obj_property>
+            <obj_property name="ObjectShortName">wb_final_result[31:0]</obj_property>
+         </wvobject>
+      </wvobject>
+      <wvobject type="divider" fp_name="divider762">
+         <obj_property name="label">wb/now</obj_property>
+         <obj_property name="DisplayName">label</obj_property>
+      </wvobject>
+      <wvobject type="divider" fp_name="divider1374">
+         <obj_property name="label">RUN</obj_property>
+         <obj_property name="DisplayName">label</obj_property>
+      </wvobject>
+      <wvobject fp_name="group1369" type="group">
+         <obj_property name="label">id_run</obj_property>
+         <obj_property name="DisplayName">label</obj_property>
+         <obj_property name="isExpanded"></obj_property>
+         <wvobject fp_name="/tb_top/soc_lite/cpu/seq_pc" type="array">
+            <obj_property name="ElementShortName">seq_pc[31:0]</obj_property>
+            <obj_property name="ObjectShortName">seq_pc[31:0]</obj_property>
+         </wvobject>
+         <wvobject fp_name="/tb_top/soc_lite/cpu/nextpc" type="array">
+            <obj_property name="ElementShortName">nextpc[31:0]</obj_property>
+            <obj_property name="ObjectShortName">nextpc[31:0]</obj_property>
+         </wvobject>
+         <wvobject fp_name="/tb_top/soc_lite/cpu/br_taken" type="logic">
+            <obj_property name="ElementShortName">br_taken</obj_property>
+            <obj_property name="ObjectShortName">br_taken</obj_property>
+         </wvobject>
+         <wvobject fp_name="/tb_top/soc_lite/cpu/br_target" type="array">
+            <obj_property name="ElementShortName">br_target[31:0]</obj_property>
+            <obj_property name="ObjectShortName">br_target[31:0]</obj_property>
+         </wvobject>
+         <wvobject fp_name="/tb_top/soc_lite/cpu/inst" type="array">
+            <obj_property name="ElementShortName">inst[31:0]</obj_property>
+            <obj_property name="ObjectShortName">inst[31:0]</obj_property>
+         </wvobject>
+         <wvobject fp_name="/tb_top/soc_lite/cpu/pc" type="array">
+            <obj_property name="ElementShortName">pc[31:0]</obj_property>
+            <obj_property name="ObjectShortName">pc[31:0]</obj_property>
+         </wvobject>
+         <wvobject fp_name="/tb_top/soc_lite/cpu/alu_op" type="array">
+            <obj_property name="ElementShortName">alu_op[11:0]</obj_property>
+            <obj_property name="ObjectShortName">alu_op[11:0]</obj_property>
+         </wvobject>
+         <wvobject fp_name="/tb_top/soc_lite/cpu/load_op" type="logic">
+            <obj_property name="ElementShortName">load_op</obj_property>
+            <obj_property name="ObjectShortName">load_op</obj_property>
+         </wvobject>
+         <wvobject fp_name="/tb_top/soc_lite/cpu/src1_is_pc" type="logic">
+            <obj_property name="ElementShortName">src1_is_pc</obj_property>
+            <obj_property name="ObjectShortName">src1_is_pc</obj_property>
+         </wvobject>
+         <wvobject fp_name="/tb_top/soc_lite/cpu/src2_is_imm" type="logic">
+            <obj_property name="ElementShortName">src2_is_imm</obj_property>
+            <obj_property name="ObjectShortName">src2_is_imm</obj_property>
+         </wvobject>
+         <wvobject fp_name="/tb_top/soc_lite/cpu/res_from_mem" type="logic">
+            <obj_property name="ElementShortName">res_from_mem</obj_property>
+            <obj_property name="ObjectShortName">res_from_mem</obj_property>
+         </wvobject>
+         <wvobject fp_name="/tb_top/soc_lite/cpu/dst_is_r1" type="logic">
+            <obj_property name="ElementShortName">dst_is_r1</obj_property>
+            <obj_property name="ObjectShortName">dst_is_r1</obj_property>
+         </wvobject>
+         <wvobject fp_name="/tb_top/soc_lite/cpu/gr_we" type="logic">
+            <obj_property name="ElementShortName">gr_we</obj_property>
+            <obj_property name="ObjectShortName">gr_we</obj_property>
+         </wvobject>
+         <wvobject fp_name="/tb_top/soc_lite/cpu/mem_we" type="logic">
+            <obj_property name="ElementShortName">mem_we</obj_property>
+            <obj_property name="ObjectShortName">mem_we</obj_property>
+         </wvobject>
+         <wvobject fp_name="/tb_top/soc_lite/cpu/src_reg_is_rd" type="logic">
+            <obj_property name="ElementShortName">src_reg_is_rd</obj_property>
+            <obj_property name="ObjectShortName">src_reg_is_rd</obj_property>
+         </wvobject>
+         <wvobject fp_name="/tb_top/soc_lite/cpu/dest" type="array">
+            <obj_property name="ElementShortName">dest[4:0]</obj_property>
+            <obj_property name="ObjectShortName">dest[4:0]</obj_property>
+         </wvobject>
+         <wvobject fp_name="/tb_top/soc_lite/cpu/rj_value" type="array">
+            <obj_property name="ElementShortName">rj_value[31:0]</obj_property>
+            <obj_property name="ObjectShortName">rj_value[31:0]</obj_property>
+         </wvobject>
+         <wvobject fp_name="/tb_top/soc_lite/cpu/rkd_value" type="array">
+            <obj_property name="ElementShortName">rkd_value[31:0]</obj_property>
+            <obj_property name="ObjectShortName">rkd_value[31:0]</obj_property>
+         </wvobject>
+         <wvobject fp_name="/tb_top/soc_lite/cpu/imm" type="array">
+            <obj_property name="ElementShortName">imm[31:0]</obj_property>
+            <obj_property name="ObjectShortName">imm[31:0]</obj_property>
+         </wvobject>
+         <wvobject fp_name="/tb_top/soc_lite/cpu/br_offs" type="array">
+            <obj_property name="ElementShortName">br_offs[31:0]</obj_property>
+            <obj_property name="ObjectShortName">br_offs[31:0]</obj_property>
+         </wvobject>
+         <wvobject fp_name="/tb_top/soc_lite/cpu/jirl_offs" type="array">
+            <obj_property name="ElementShortName">jirl_offs[31:0]</obj_property>
+            <obj_property name="ObjectShortName">jirl_offs[31:0]</obj_property>
+         </wvobject>
+         <wvobject fp_name="/tb_top/soc_lite/cpu/op_31_26" type="array">
+            <obj_property name="ElementShortName">op_31_26[5:0]</obj_property>
+            <obj_property name="ObjectShortName">op_31_26[5:0]</obj_property>
+         </wvobject>
+         <wvobject fp_name="/tb_top/soc_lite/cpu/op_25_22" type="array">
+            <obj_property name="ElementShortName">op_25_22[3:0]</obj_property>
+            <obj_property name="ObjectShortName">op_25_22[3:0]</obj_property>
+         </wvobject>
+         <wvobject fp_name="/tb_top/soc_lite/cpu/op_21_20" type="array">
+            <obj_property name="ElementShortName">op_21_20[1:0]</obj_property>
+            <obj_property name="ObjectShortName">op_21_20[1:0]</obj_property>
+         </wvobject>
+         <wvobject fp_name="/tb_top/soc_lite/cpu/op_19_15" type="array">
+            <obj_property name="ElementShortName">op_19_15[4:0]</obj_property>
+            <obj_property name="ObjectShortName">op_19_15[4:0]</obj_property>
+         </wvobject>
+         <wvobject fp_name="/tb_top/soc_lite/cpu/rd" type="array">
+            <obj_property name="ElementShortName">rd[4:0]</obj_property>
+            <obj_property name="ObjectShortName">rd[4:0]</obj_property>
+         </wvobject>
+         <wvobject fp_name="/tb_top/soc_lite/cpu/rj" type="array">
+            <obj_property name="ElementShortName">rj[4:0]</obj_property>
+            <obj_property name="ObjectShortName">rj[4:0]</obj_property>
+         </wvobject>
+         <wvobject fp_name="/tb_top/soc_lite/cpu/rk" type="array">
+            <obj_property name="ElementShortName">rk[4:0]</obj_property>
+            <obj_property name="ObjectShortName">rk[4:0]</obj_property>
+         </wvobject>
+         <wvobject fp_name="/tb_top/soc_lite/cpu/i12" type="array">
+            <obj_property name="ElementShortName">i12[11:0]</obj_property>
+            <obj_property name="ObjectShortName">i12[11:0]</obj_property>
+         </wvobject>
+         <wvobject fp_name="/tb_top/soc_lite/cpu/i20" type="array">
+            <obj_property name="ElementShortName">i20[19:0]</obj_property>
+            <obj_property name="ObjectShortName">i20[19:0]</obj_property>
+         </wvobject>
+         <wvobject fp_name="/tb_top/soc_lite/cpu/i16" type="array">
+            <obj_property name="ElementShortName">i16[15:0]</obj_property>
+            <obj_property name="ObjectShortName">i16[15:0]</obj_property>
+         </wvobject>
+         <wvobject fp_name="/tb_top/soc_lite/cpu/i26" type="array">
+            <obj_property name="ElementShortName">i26[25:0]</obj_property>
+            <obj_property name="ObjectShortName">i26[25:0]</obj_property>
+         </wvobject>
+         <wvobject fp_name="/tb_top/soc_lite/cpu/op_31_26_d" type="array">
+            <obj_property name="ElementShortName">op_31_26_d[63:0]</obj_property>
+            <obj_property name="ObjectShortName">op_31_26_d[63:0]</obj_property>
+         </wvobject>
+         <wvobject fp_name="/tb_top/soc_lite/cpu/op_25_22_d" type="array">
+            <obj_property name="ElementShortName">op_25_22_d[15:0]</obj_property>
+            <obj_property name="ObjectShortName">op_25_22_d[15:0]</obj_property>
+         </wvobject>
+         <wvobject fp_name="/tb_top/soc_lite/cpu/op_21_20_d" type="array">
+            <obj_property name="ElementShortName">op_21_20_d[3:0]</obj_property>
+            <obj_property name="ObjectShortName">op_21_20_d[3:0]</obj_property>
+         </wvobject>
+         <wvobject fp_name="/tb_top/soc_lite/cpu/op_19_15_d" type="array">
+            <obj_property name="ElementShortName">op_19_15_d[31:0]</obj_property>
+            <obj_property name="ObjectShortName">op_19_15_d[31:0]</obj_property>
+         </wvobject>
+         <wvobject fp_name="/tb_top/soc_lite/cpu/inst_add_w" type="logic">
+            <obj_property name="ElementShortName">inst_add_w</obj_property>
+            <obj_property name="ObjectShortName">inst_add_w</obj_property>
+         </wvobject>
+         <wvobject fp_name="/tb_top/soc_lite/cpu/inst_sub_w" type="logic">
+            <obj_property name="ElementShortName">inst_sub_w</obj_property>
+            <obj_property name="ObjectShortName">inst_sub_w</obj_property>
+         </wvobject>
+         <wvobject fp_name="/tb_top/soc_lite/cpu/inst_slt" type="logic">
+            <obj_property name="ElementShortName">inst_slt</obj_property>
+            <obj_property name="ObjectShortName">inst_slt</obj_property>
+         </wvobject>
+         <wvobject fp_name="/tb_top/soc_lite/cpu/inst_sltu" type="logic">
+            <obj_property name="ElementShortName">inst_sltu</obj_property>
+            <obj_property name="ObjectShortName">inst_sltu</obj_property>
+         </wvobject>
+         <wvobject fp_name="/tb_top/soc_lite/cpu/inst_nor" type="logic">
+            <obj_property name="ElementShortName">inst_nor</obj_property>
+            <obj_property name="ObjectShortName">inst_nor</obj_property>
+         </wvobject>
+         <wvobject fp_name="/tb_top/soc_lite/cpu/inst_and" type="logic">
+            <obj_property name="ElementShortName">inst_and</obj_property>
+            <obj_property name="ObjectShortName">inst_and</obj_property>
+         </wvobject>
+         <wvobject fp_name="/tb_top/soc_lite/cpu/inst_or" type="logic">
+            <obj_property name="ElementShortName">inst_or</obj_property>
+            <obj_property name="ObjectShortName">inst_or</obj_property>
+         </wvobject>
+         <wvobject fp_name="/tb_top/soc_lite/cpu/inst_xor" type="logic">
+            <obj_property name="ElementShortName">inst_xor</obj_property>
+            <obj_property name="ObjectShortName">inst_xor</obj_property>
+         </wvobject>
+         <wvobject fp_name="/tb_top/soc_lite/cpu/inst_slli_w" type="logic">
+            <obj_property name="ElementShortName">inst_slli_w</obj_property>
+            <obj_property name="ObjectShortName">inst_slli_w</obj_property>
+         </wvobject>
+         <wvobject fp_name="/tb_top/soc_lite/cpu/inst_srli_w" type="logic">
+            <obj_property name="ElementShortName">inst_srli_w</obj_property>
+            <obj_property name="ObjectShortName">inst_srli_w</obj_property>
+         </wvobject>
+         <wvobject fp_name="/tb_top/soc_lite/cpu/inst_srai_w" type="logic">
+            <obj_property name="ElementShortName">inst_srai_w</obj_property>
+            <obj_property name="ObjectShortName">inst_srai_w</obj_property>
+         </wvobject>
+         <wvobject fp_name="/tb_top/soc_lite/cpu/inst_addi_w" type="logic">
+            <obj_property name="ElementShortName">inst_addi_w</obj_property>
+            <obj_property name="ObjectShortName">inst_addi_w</obj_property>
+         </wvobject>
+         <wvobject fp_name="/tb_top/soc_lite/cpu/inst_ld_w" type="logic">
+            <obj_property name="ElementShortName">inst_ld_w</obj_property>
+            <obj_property name="ObjectShortName">inst_ld_w</obj_property>
+         </wvobject>
+         <wvobject fp_name="/tb_top/soc_lite/cpu/inst_st_w" type="logic">
+            <obj_property name="ElementShortName">inst_st_w</obj_property>
+            <obj_property name="ObjectShortName">inst_st_w</obj_property>
+         </wvobject>
+         <wvobject fp_name="/tb_top/soc_lite/cpu/inst_jirl" type="logic">
+            <obj_property name="ElementShortName">inst_jirl</obj_property>
+            <obj_property name="ObjectShortName">inst_jirl</obj_property>
+         </wvobject>
+         <wvobject fp_name="/tb_top/soc_lite/cpu/inst_b" type="logic">
+            <obj_property name="ElementShortName">inst_b</obj_property>
+            <obj_property name="ObjectShortName">inst_b</obj_property>
+         </wvobject>
+         <wvobject fp_name="/tb_top/soc_lite/cpu/inst_bl" type="logic">
+            <obj_property name="ElementShortName">inst_bl</obj_property>
+            <obj_property name="ObjectShortName">inst_bl</obj_property>
+         </wvobject>
+         <wvobject fp_name="/tb_top/soc_lite/cpu/inst_beq" type="logic">
+            <obj_property name="ElementShortName">inst_beq</obj_property>
+            <obj_property name="ObjectShortName">inst_beq</obj_property>
+         </wvobject>
+         <wvobject fp_name="/tb_top/soc_lite/cpu/inst_bne" type="logic">
+            <obj_property name="ElementShortName">inst_bne</obj_property>
+            <obj_property name="ObjectShortName">inst_bne</obj_property>
+         </wvobject>
+         <wvobject fp_name="/tb_top/soc_lite/cpu/inst_lu12i_w" type="logic">
+            <obj_property name="ElementShortName">inst_lu12i_w</obj_property>
+            <obj_property name="ObjectShortName">inst_lu12i_w</obj_property>
+         </wvobject>
+         <wvobject fp_name="/tb_top/soc_lite/cpu/need_ui5" type="logic">
+            <obj_property name="ElementShortName">need_ui5</obj_property>
+            <obj_property name="ObjectShortName">need_ui5</obj_property>
+         </wvobject>
+         <wvobject fp_name="/tb_top/soc_lite/cpu/need_si12" type="logic">
+            <obj_property name="ElementShortName">need_si12</obj_property>
+            <obj_property name="ObjectShortName">need_si12</obj_property>
+         </wvobject>
+         <wvobject fp_name="/tb_top/soc_lite/cpu/need_si16" type="logic">
+            <obj_property name="ElementShortName">need_si16</obj_property>
+            <obj_property name="ObjectShortName">need_si16</obj_property>
+         </wvobject>
+         <wvobject fp_name="/tb_top/soc_lite/cpu/need_si20" type="logic">
+            <obj_property name="ElementShortName">need_si20</obj_property>
+            <obj_property name="ObjectShortName">need_si20</obj_property>
+         </wvobject>
+         <wvobject fp_name="/tb_top/soc_lite/cpu/need_si26" type="logic">
+            <obj_property name="ElementShortName">need_si26</obj_property>
+            <obj_property name="ObjectShortName">need_si26</obj_property>
+         </wvobject>
+         <wvobject fp_name="/tb_top/soc_lite/cpu/src2_is_4" type="logic">
+            <obj_property name="ElementShortName">src2_is_4</obj_property>
+            <obj_property name="ObjectShortName">src2_is_4</obj_property>
+         </wvobject>
+         <wvobject fp_name="/tb_top/soc_lite/cpu/rf_raddr1" type="array">
+            <obj_property name="ElementShortName">rf_raddr1[4:0]</obj_property>
+            <obj_property name="ObjectShortName">rf_raddr1[4:0]</obj_property>
+         </wvobject>
+         <wvobject fp_name="/tb_top/soc_lite/cpu/rf_rdata1" type="array">
+            <obj_property name="ElementShortName">rf_rdata1[31:0]</obj_property>
+            <obj_property name="ObjectShortName">rf_rdata1[31:0]</obj_property>
+         </wvobject>
+         <wvobject fp_name="/tb_top/soc_lite/cpu/rf_raddr2" type="array">
+            <obj_property name="ElementShortName">rf_raddr2[4:0]</obj_property>
+            <obj_property name="ObjectShortName">rf_raddr2[4:0]</obj_property>
+         </wvobject>
+         <wvobject fp_name="/tb_top/soc_lite/cpu/rf_rdata2" type="array">
+            <obj_property name="ElementShortName">rf_rdata2[31:0]</obj_property>
+            <obj_property name="ObjectShortName">rf_rdata2[31:0]</obj_property>
+         </wvobject>
+         <wvobject fp_name="/tb_top/soc_lite/cpu/rf_we" type="logic">
+            <obj_property name="ElementShortName">rf_we</obj_property>
+            <obj_property name="ObjectShortName">rf_we</obj_property>
+         </wvobject>
+         <wvobject fp_name="/tb_top/soc_lite/cpu/rf_waddr" type="array">
+            <obj_property name="ElementShortName">rf_waddr[4:0]</obj_property>
+            <obj_property name="ObjectShortName">rf_waddr[4:0]</obj_property>
+         </wvobject>
+         <wvobject fp_name="/tb_top/soc_lite/cpu/rf_wdata" type="array">
+            <obj_property name="ElementShortName">rf_wdata[31:0]</obj_property>
+            <obj_property name="ObjectShortName">rf_wdata[31:0]</obj_property>
+         </wvobject>
+      </wvobject>
+      <wvobject type="divider" fp_name="divider1370">
+         <obj_property name="label">idrun/exrun</obj_property>
+         <obj_property name="DisplayName">label</obj_property>
+      </wvobject>
+      <wvobject fp_name="group1371" type="group">
+         <obj_property name="label">ex_run</obj_property>
+         <obj_property name="DisplayName">label</obj_property>
+         <wvobject fp_name="/tb_top/soc_lite/cpu/alu_src1" type="array">
+            <obj_property name="ElementShortName">alu_src1[31:0]</obj_property>
+            <obj_property name="ObjectShortName">alu_src1[31:0]</obj_property>
+         </wvobject>
+         <wvobject fp_name="/tb_top/soc_lite/cpu/alu_src2" type="array">
+            <obj_property name="ElementShortName">alu_src2[31:0]</obj_property>
+            <obj_property name="ObjectShortName">alu_src2[31:0]</obj_property>
+         </wvobject>
+         <wvobject fp_name="/tb_top/soc_lite/cpu/alu_result" type="array">
+            <obj_property name="ElementShortName">alu_result[31:0]</obj_property>
+            <obj_property name="ObjectShortName">alu_result[31:0]</obj_property>
+         </wvobject>
+      </wvobject>
+      <wvobject fp_name="/tb_top/soc_lite/cpu/mem_result" type="array">
+         <obj_property name="ElementShortName">mem_result[31:0]</obj_property>
+         <obj_property name="ObjectShortName">mem_result[31:0]</obj_property>
+      </wvobject>
+      <wvobject fp_name="/tb_top/soc_lite/cpu/final_result" type="array">
+         <obj_property name="ElementShortName">final_result[31:0]</obj_property>
+         <obj_property name="ObjectShortName">final_result[31:0]</obj_property>
+      </wvobject>
+      <wvobject type="divider" fp_name="divider1373">
+         <obj_property name="label">RUN</obj_property>
+         <obj_property name="DisplayName">label</obj_property>
+      </wvobject>
+      <wvobject fp_name="/tb_top/soc_lite/cpu/data_in" type="array">
+         <obj_property name="ElementShortName">data_in[31:0]</obj_property>
+         <obj_property name="ObjectShortName">data_in[31:0]</obj_property>
+      </wvobject>
+      <wvobject fp_name="group1372" type="group">
+         <obj_property name="label">plregs</obj_property>
+         <obj_property name="DisplayName">label</obj_property>
+         <wvobject fp_name="/tb_top/soc_lite/cpu/wb_allowin" type="logic">
+            <obj_property name="ElementShortName">wb_allowin</obj_property>
+            <obj_property name="ObjectShortName">wb_allowin</obj_property>
+         </wvobject>
+         <wvobject fp_name="/tb_top/soc_lite/cpu/id_valid" type="logic">
+            <obj_property name="ElementShortName">id_valid</obj_property>
+            <obj_property name="ObjectShortName">id_valid</obj_property>
+         </wvobject>
+         <wvobject fp_name="/tb_top/soc_lite/cpu/id_reg" type="array">
+            <obj_property name="ElementShortName">id_reg[199:0]</obj_property>
+            <obj_property name="ObjectShortName">id_reg[199:0]</obj_property>
+         </wvobject>
+         <wvobject fp_name="/tb_top/soc_lite/cpu/ex_valid" type="logic">
+            <obj_property name="ElementShortName">ex_valid</obj_property>
+            <obj_property name="ObjectShortName">ex_valid</obj_property>
+         </wvobject>
+         <wvobject fp_name="/tb_top/soc_lite/cpu/ex_reg" type="array">
+            <obj_property name="ElementShortName">ex_reg[199:0]</obj_property>
+            <obj_property name="ObjectShortName">ex_reg[199:0]</obj_property>
+         </wvobject>
+         <wvobject fp_name="/tb_top/soc_lite/cpu/mem_valid" type="logic">
+            <obj_property name="ElementShortName">mem_valid</obj_property>
+            <obj_property name="ObjectShortName">mem_valid</obj_property>
+         </wvobject>
+         <wvobject fp_name="/tb_top/soc_lite/cpu/mem_reg" type="array">
+            <obj_property name="ElementShortName">mem_reg[199:0]</obj_property>
+            <obj_property name="ObjectShortName">mem_reg[199:0]</obj_property>
+         </wvobject>
+         <wvobject fp_name="/tb_top/soc_lite/cpu/wb_valid" type="logic">
+            <obj_property name="ElementShortName">wb_valid</obj_property>
+            <obj_property name="ObjectShortName">wb_valid</obj_property>
+         </wvobject>
+         <wvobject fp_name="/tb_top/soc_lite/cpu/wb_reg" type="array">
+            <obj_property name="ElementShortName">wb_reg[199:0]</obj_property>
+            <obj_property name="ObjectShortName">wb_reg[199:0]</obj_property>
+         </wvobject>
+      </wvobject>
+      <wvobject fp_name="/tb_top/soc_lite/cpu/validin" type="logic">
+         <obj_property name="ElementShortName">validin</obj_property>
+         <obj_property name="ObjectShortName">validin</obj_property>
+      </wvobject>
+      <wvobject fp_name="/tb_top/soc_lite/cpu/id_allowin" type="logic">
+         <obj_property name="ElementShortName">id_allowin</obj_property>
+         <obj_property name="ObjectShortName">id_allowin</obj_property>
+      </wvobject>
+      <wvobject fp_name="/tb_top/soc_lite/cpu/id_ready_go" type="logic">
+         <obj_property name="ElementShortName">id_ready_go</obj_property>
+         <obj_property name="ObjectShortName">id_ready_go</obj_property>
+      </wvobject>
+      <wvobject fp_name="/tb_top/soc_lite/cpu/id_to_ex_valid" type="logic">
+         <obj_property name="ElementShortName">id_to_ex_valid</obj_property>
+         <obj_property name="ObjectShortName">id_to_ex_valid</obj_property>
+      </wvobject>
+      <wvobject fp_name="/tb_top/soc_lite/cpu/out_allow" type="logic">
+         <obj_property name="ElementShortName">out_allow</obj_property>
+         <obj_property name="ObjectShortName">out_allow</obj_property>
+      </wvobject>
+      <wvobject fp_name="/tb_top/soc_lite/cpu/wb_ready_go" type="logic">
+         <obj_property name="ElementShortName">wb_ready_go</obj_property>
+         <obj_property name="ObjectShortName">wb_ready_go</obj_property>
+      </wvobject>
+      <wvobject fp_name="/tb_top/soc_lite/cpu/rj_eq_rd" type="logic">
+         <obj_property name="ElementShortName">rj_eq_rd</obj_property>
+         <obj_property name="ObjectShortName">rj_eq_rd</obj_property>
+      </wvobject>
+      <wvobject fp_name="/tb_top/soc_lite/cpu/validout" type="logic">
+         <obj_property name="ElementShortName">validout</obj_property>
+         <obj_property name="ObjectShortName">validout</obj_property>
+      </wvobject>
+      <wvobject fp_name="/tb_top/soc_lite/cpu/dataout" type="logic">
+         <obj_property name="ElementShortName">dataout</obj_property>
+         <obj_property name="ObjectShortName">dataout</obj_property>
+      </wvobject>
+      <wvobject fp_name="/tb_top/soc_lite/cpu/WIDTH" type="array">
+         <obj_property name="ElementShortName">WIDTH[31:0]</obj_property>
+         <obj_property name="ObjectShortName">WIDTH[31:0]</obj_property>
+      </wvobject>
+   </wvobject>
+   <wvobject fp_name="group757" type="group">
+      <obj_property name="label">inst_ram</obj_property>
+      <obj_property name="DisplayName">label</obj_property>
+      <wvobject fp_name="/tb_top/soc_lite/inst_ram/clka" type="logic">
+         <obj_property name="ElementShortName">clka</obj_property>
+         <obj_property name="ObjectShortName">clka</obj_property>
+      </wvobject>
+      <wvobject fp_name="/tb_top/soc_lite/inst_ram/ena" type="logic">
+         <obj_property name="ElementShortName">ena</obj_property>
+         <obj_property name="ObjectShortName">ena</obj_property>
+      </wvobject>
+      <wvobject fp_name="/tb_top/soc_lite/inst_ram/wea" type="array">
+         <obj_property name="ElementShortName">wea[3:0]</obj_property>
+         <obj_property name="ObjectShortName">wea[3:0]</obj_property>
+      </wvobject>
+      <wvobject fp_name="/tb_top/soc_lite/inst_ram/addra" type="array">
+         <obj_property name="ElementShortName">addra[17:0]</obj_property>
+         <obj_property name="ObjectShortName">addra[17:0]</obj_property>
+      </wvobject>
+      <wvobject fp_name="/tb_top/soc_lite/inst_ram/dina" type="array">
+         <obj_property name="ElementShortName">dina[31:0]</obj_property>
+         <obj_property name="ObjectShortName">dina[31:0]</obj_property>
+      </wvobject>
+      <wvobject fp_name="/tb_top/soc_lite/inst_ram/douta" type="array">
+         <obj_property name="ElementShortName">douta[31:0]</obj_property>
+         <obj_property name="ObjectShortName">douta[31:0]</obj_property>
+      </wvobject>
+   </wvobject>
+</wave_config>
