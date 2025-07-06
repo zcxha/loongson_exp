@@ -66,7 +66,8 @@ module mycpu_top #
     wire [31:0] wb_inst;
     wire wb_gr_we;
     wire [4:0] wb_dest;
-    wire [31:0] wb_final_result;
+    wire [31:0] wb_alu_result;
+	wire wb_res_from_mem;
 
     wire [31:0] mem_pc;
     wire [31:0] mem_inst;
@@ -294,10 +295,10 @@ module mycpu_top #
                           || inst_bl
                           || inst_b
                       ) && valid;
-    assign br_target = (inst_beq || inst_bne || inst_bl || inst_b) ? (pc + br_offs) :
+    assign br_target = (inst_beq || inst_bne || inst_bl || inst_b) ? (id_pc + br_offs) :
            /*inst_jirl*/ (rj_value + jirl_offs);
 
-    assign alu_src1 = src1_is_pc  ? pc[31:0] : rj_value;
+    assign alu_src1 = src1_is_pc  ? id_pc[31:0] : rj_value;
     assign alu_src2 = src2_is_imm ? imm : rkd_value;
 
     alu u_alu(
@@ -312,17 +313,17 @@ module mycpu_top #
     assign data_sram_wdata = mem_rkd_value;
 
     assign mem_result   = data_sram_rdata;
-    assign final_result = mem_res_from_mem ? mem_result : mem_alu_result;
+    assign final_result = wb_res_from_mem ? data_sram_rdata : wb_alu_result;
 
     assign rf_we    = wb_gr_we && valid;
     assign rf_waddr = wb_dest;
-    assign rf_wdata = wb_final_result;
+    assign rf_wdata = final_result;
 
     // debug info generate
     assign debug_wb_pc       = wb_pc;
-    assign debug_wb_rf_we   = {4{rf_we}};
+    assign debug_wb_rf_we   = {4{(wb_pc == 32'h1bfffffc) ? 0 : rf_we}};
     assign debug_wb_rf_wnum  = wb_dest;
-    assign debug_wb_rf_wdata = wb_final_result;
+    assign debug_wb_rf_wdata = final_result;
 
     wire wb_allowin;
 
@@ -358,7 +359,7 @@ module mycpu_top #
         end
 
         if (validin && id_allowin) begin
-            id_reg[31:0] <= nextpc;
+            id_reg[31:0] <= pc;
             id_reg[63:32] <= data_in; // data in = inst_sram_rdata
         end
     end
@@ -462,7 +463,8 @@ module mycpu_top #
             wb_reg[63:32] <= mem_inst;
             wb_reg[64] <= mem_gr_we;
             wb_reg[69:65] <= mem_dest;
-            wb_reg[101:70] <= final_result;
+			wb_reg[70] <= mem_res_from_mem;
+			wb_reg[102:71] <= mem_alu_result;
         end
     end
     assign validout = wb_valid && wb_ready_go; // not defined
@@ -474,6 +476,7 @@ module mycpu_top #
     assign wb_inst = wb_reg[63:32];
     assign wb_gr_we = wb_reg[64];
     assign wb_dest = wb_reg[69:65];
-    assign wb_final_result = wb_reg[101:70];
+    assign wb_res_from_mem = wb_reg[70];
+	assign wb_alu_result = wb_reg[102:71];
 
 endmodule

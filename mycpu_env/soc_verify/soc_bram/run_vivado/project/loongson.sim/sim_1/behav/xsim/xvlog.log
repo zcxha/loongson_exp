@@ -23,8 +23,8 @@ INFO: [VRFC 10-311] analyzing module decoder_6_64
 INFO: [VRFC 10-2263] Analyzing Verilog file "E:/loongson/cdp_ede_local/mycpu_env/myCPU/mycpu_top.v" into library xil_defaultlib
 INFO: [VRFC 10-311] analyzing module mycpu_top
 INFO: [VRFC 10-2458] undeclared symbol rj_eq_rd, assumed default net type wire [E:/loongson/cdp_ede_local/mycpu_env/myCPU/mycpu_top.v:291]
-INFO: [VRFC 10-2458] undeclared symbol validout, assumed default net type wire [E:/loongson/cdp_ede_local/mycpu_env/myCPU/mycpu_top.v:474]
-INFO: [VRFC 10-2458] undeclared symbol dataout, assumed default net type wire [E:/loongson/cdp_ede_local/mycpu_env/myCPU/mycpu_top.v:475]
+INFO: [VRFC 10-2458] undeclared symbol validout, assumed default net type wire [E:/loongson/cdp_ede_local/mycpu_env/myCPU/mycpu_top.v:470]
+INFO: [VRFC 10-2458] undeclared symbol dataout, assumed default net type wire [E:/loongson/cdp_ede_local/mycpu_env/myCPU/mycpu_top.v:471]
 INFO: [VRFC 10-2263] Analyzing Verilog file "E:/loongson/cdp_ede_local/mycpu_env/myCPU/regfile.v" into library xil_defaultlib
 INFO: [VRFC 10-311] analyzing module regfile
 INFO: [VRFC 10-2263] Analyzing Verilog file "E:/loongson/cdp_ede_local/mycpu_env/soc_verify/soc_bram/rtl/soc_lite_top.v" into library xil_defaultlib

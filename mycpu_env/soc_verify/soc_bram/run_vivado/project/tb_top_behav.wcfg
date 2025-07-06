@@ -11,15 +11,15 @@
       </db_ref>
    </db_ref_list>
    <zoom_setting>
-      <ZoomStartTime time="2009422fs"></ZoomStartTime>
-      <ZoomEndTime time="2065523fs"></ZoomEndTime>
-      <Cursor1Time time="2031122fs"></Cursor1Time>
+      <ZoomStartTime time="1133213861fs"></ZoomStartTime>
+      <ZoomEndTime time="1133283012fs"></ZoomEndTime>
+      <Cursor1Time time="1133240211fs"></Cursor1Time>
    </zoom_setting>
    <column_width_setting>
       <NameColumnWidth column_width="226"></NameColumnWidth>
-      <ValueColumnWidth column_width="323"></ValueColumnWidth>
+      <ValueColumnWidth column_width="319"></ValueColumnWidth>
    </column_width_setting>
-   <WVObjectSize size="3" />
+   <WVObjectSize size="4" />
    <wvobject fp_name="group606" type="group">
       <obj_property name="label">tb</obj_property>
       <obj_property name="DisplayName">label</obj_property>
@@ -252,6 +252,7 @@
       <wvobject fp_name="group2344" type="group">
          <obj_property name="label">expl</obj_property>
          <obj_property name="DisplayName">label</obj_property>
+         <obj_property name="isExpanded"></obj_property>
          <wvobject fp_name="/tb_top/soc_lite/cpu/ex_allowin" type="logic">
             <obj_property name="ElementShortName">ex_allowin</obj_property>
             <obj_property name="ObjectShortName">ex_allowin</obj_property>
@@ -312,9 +313,11 @@
       <wvobject fp_name="group2343" type="group">
          <obj_property name="label">wbpl</obj_property>
          <obj_property name="DisplayName">label</obj_property>
+         <obj_property name="isExpanded"></obj_property>
          <wvobject fp_name="group2342" type="group">
             <obj_property name="label">mempl</obj_property>
             <obj_property name="DisplayName">label</obj_property>
+            <obj_property name="isExpanded"></obj_property>
             <wvobject fp_name="/tb_top/soc_lite/cpu/mem_allowin" type="logic">
                <obj_property name="ElementShortName">mem_allowin</obj_property>
                <obj_property name="ObjectShortName">mem_allowin</obj_property>
@@ -681,6 +684,7 @@
       <wvobject fp_name="group1371" type="group">
          <obj_property name="label">ex_run</obj_property>
          <obj_property name="DisplayName">label</obj_property>
+         <obj_property name="isExpanded"></obj_property>
          <wvobject fp_name="/tb_top/soc_lite/cpu/alu_src1" type="array">
             <obj_property name="ElementShortName">alu_src1[31:0]</obj_property>
             <obj_property name="ObjectShortName">alu_src1[31:0]</obj_property>
@@ -818,5 +822,10 @@
          <obj_property name="ElementShortName">douta[31:0]</obj_property>
          <obj_property name="ObjectShortName">douta[31:0]</obj_property>
       </wvobject>
+   </wvobject>
+   <wvobject fp_name="/tb_top/soc_lite/data_ram/inst/\native_mem_module.blk_mem_gen_v8_4_4_inst /memory[27099]" type="array">
+      <obj_property name="ElementShortName">[27099][31:0]</obj_property>
+      <obj_property name="ObjectShortName">[27099][31:0]</obj_property>
+      <obj_property name="isExpanded"></obj_property>
    </wvobject>
 </wave_config>

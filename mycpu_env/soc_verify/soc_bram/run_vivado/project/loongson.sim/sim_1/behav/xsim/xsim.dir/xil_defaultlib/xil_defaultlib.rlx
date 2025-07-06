@@ -7,7 +7,7 @@ E:/loongson/cdp_ede_local/mycpu_env/myCPU/decoder_2_4.v,1751333638,verilog,,E:/l
 E:/loongson/cdp_ede_local/mycpu_env/myCPU/decoder_4_16.v,1751333638,verilog,,E:/loongson/cdp_ede_local/mycpu_env/myCPU/decoder_5_32.v,,decoder_4_16,,,../../../../../../rtl/xilinx_ip/clk_pll,,,,,
 E:/loongson/cdp_ede_local/mycpu_env/myCPU/decoder_5_32.v,1751333638,verilog,,E:/loongson/cdp_ede_local/mycpu_env/myCPU/decoder_6_64.v,,decoder_5_32,,,../../../../../../rtl/xilinx_ip/clk_pll,,,,,
 E:/loongson/cdp_ede_local/mycpu_env/myCPU/decoder_6_64.v,1751333638,verilog,,E:/loongson/cdp_ede_local/mycpu_env/myCPU/mycpu_top.v,,decoder_6_64,,,../../../../../../rtl/xilinx_ip/clk_pll,,,,,
-E:/loongson/cdp_ede_local/mycpu_env/myCPU/mycpu_top.v,1751787840,verilog,,E:/loongson/cdp_ede_local/mycpu_env/myCPU/regfile.v,,mycpu_top,,,../../../../../../rtl/xilinx_ip/clk_pll,,,,,
+E:/loongson/cdp_ede_local/mycpu_env/myCPU/mycpu_top.v,1751794247,verilog,,E:/loongson/cdp_ede_local/mycpu_env/myCPU/regfile.v,,mycpu_top,,,../../../../../../rtl/xilinx_ip/clk_pll,,,,,
 E:/loongson/cdp_ede_local/mycpu_env/myCPU/regfile.v,1751333638,verilog,,E:/loongson/cdp_ede_local/mycpu_env/soc_verify/soc_bram/rtl/soc_lite_top.v,,regfile,,,../../../../../../rtl/xilinx_ip/clk_pll,,,,,
 E:/loongson/cdp_ede_local/mycpu_env/soc_verify/soc_bram/rtl/BRIDGE/bridge_1x2.v,1751333638,verilog,,E:/loongson/cdp_ede_local/mycpu_env/soc_verify/soc_bram/rtl/CONFREG/confreg.v,,bridge_1x2,,,../../../../../../rtl/xilinx_ip/clk_pll,,,,,
 E:/loongson/cdp_ede_local/mycpu_env/soc_verify/soc_bram/rtl/CONFREG/confreg.v,1751333638,verilog,,E:/loongson/cdp_ede_local/mycpu_env/myCPU/decoder_2_4.v,,confreg,,,../../../../../../rtl/xilinx_ip/clk_pll,,,,,
