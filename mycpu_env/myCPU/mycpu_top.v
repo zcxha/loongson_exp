@@ -23,9 +23,9 @@ module mycpu_top #
         output wire [ 4:0] debug_wb_rf_wnum,
         output wire [31:0] debug_wb_rf_wdata
     );
-	assign data_sram_en = 1;
-	assign inst_sram_en = 1;
-	
+    assign data_sram_en = 1;
+    assign inst_sram_en = 1;
+
     reg         reset;
     always @(posedge clk) reset <= ~resetn;
 
@@ -39,44 +39,6 @@ module mycpu_top #
         end
     end
 
-    wire ex_allowin;
-    wire ex_ready_go;
-    wire ex_to_mem_valid;
-    wire [31:0] id_pc;
-    wire [31:0] id_inst;
-
-
-    wire [31:0] ex_pc;
-    wire [31:0] ex_inst;
-    wire [31:0] ex_alu_src1;
-    wire [31:0] ex_alu_src2;
-    wire [11:0] ex_alu_op;
-
-    wire ex_mem_we;
-    wire ex_gr_we;
-    wire [4:0] ex_dest;
-    wire ex_res_from_mem;
-    wire [31:0] ex_rkd_value;
-
-    wire mem_allowin;
-    wire mem_ready_go;
-    wire mem_to_wb_valid;
-
-    wire [31:0] wb_pc;
-    wire [31:0] wb_inst;
-    wire wb_gr_we;
-    wire [4:0] wb_dest;
-    wire [31:0] wb_alu_result;
-	wire wb_res_from_mem;
-
-    wire [31:0] mem_pc;
-    wire [31:0] mem_inst;
-    wire mem_mem_we;
-    wire mem_gr_we;
-    wire [4:0] mem_dest;
-    wire mem_res_from_mem;
-    wire [31:0] mem_rkd_value;
-    wire [31:0] mem_alu_result;
 
 
     wire [31:0] seq_pc;
@@ -163,8 +125,9 @@ module mycpu_top #
 
     wire [31:0] final_result;
 
-    assign seq_pc       = pc + 32'h4;
-    assign nextpc       = br_taken ? br_target : seq_pc;
+    assign seq_pc       = is_data_related ? pc : pc + 32'h4;
+    assign nextpc       = (br_taken & id_valid) ? (is_data_related ? pc: br_target) : seq_pc;
+
 
     always @(posedge clk) begin
         if (reset) begin
@@ -327,6 +290,9 @@ module mycpu_top #
 
     wire wb_allowin;
 
+    reg if_valid;
+    reg [WIDTH-1:0] if_reg;
+
     reg id_valid;
     reg [WIDTH-1:0] id_reg;
     reg ex_valid;
@@ -335,38 +301,112 @@ module mycpu_top #
     reg [WIDTH-1:0] mem_reg;
     reg wb_valid;
     reg [WIDTH-1:0] wb_reg;
-	
 
-    // id stage
+
+    wire br_taken_cancel = br_taken & id_valid & ~is_data_related; // todo
 
     wire [31:0] data_in;
     wire validin;
     assign data_in = inst_sram_rdata;
-    assign validin = 1; // always?
+    assign validin = 1;
+
+    // if stage
+    wire if_allowin;
+    wire if_ready_go;
+    wire if_to_id_valid;
+    assign if_ready_go = 1; // todo
+    assign if_allowin = !if_valid || if_ready_go && id_allowin;
+    assign if_to_id_valid = if_valid && if_ready_go;
+    always @(posedge clk) begin
+        if (reset) begin
+            if_valid <= 1'b0;
+            if_reg <= 200'b0;
+        end
+        else if (br_taken_cancel) begin
+            if_valid <= 1'b0;
+        end
+        else if (if_allowin) begin
+            if_valid <= validin;
+        end
+
+        if (validin && if_allowin) begin
+            if_reg[31:0] <= pc;
+            if_reg[63:32] <= data_in;
+        end
+    end
+
+    wire [31:0] if_pc;
+    wire [31:0] if_data_in;
+
+    assign if_pc = if_reg[31:0];
+    assign if_data_in = if_reg[63:32];
+
+    // id stage
+
+    // --- 数据相关的阻塞 ---
+    // 1.rj | rk = dest:
+    // add,sub,slt,sltu,NOR,and,or,xor
+    // 2.rj == dest?:
+    // slli,srli,srai,addi,ld,jirl
+    // 3.rj | rd = dest？
+    // st,beq,bne
+
+    wire rjk_dest_inst = inst_add_w | inst_sub_w | inst_slt | inst_sltu | inst_nor | inst_and | inst_or | inst_xor;
+    wire rj_dest_inst = inst_slli_w | inst_srli_w | inst_srai_w | inst_addi_w | inst_ld_w | inst_jirl;
+    wire rjd_dest_inst = inst_st_w | inst_beq | inst_bne;
+    wire is_data_related = (rjk_dest_inst & (
+                                ( ex_valid == 1 && (rj == ex_dest || rk == ex_dest) ) ||
+                                ( mem_valid == 1 && (rj == mem_dest || rk == mem_dest) ) ||
+                                ( wb_valid == 1 && (rj == wb_dest || rk == wb_dest) )
+                            )) ||
+         (rj_dest_inst & (
+              (ex_valid == 1 && rj == ex_dest) ||
+              (mem_valid == 1 && rj == mem_dest) ||
+              (wb_valid == 1 && rj == wb_dest)
+          )) ||
+         (rjd_dest_inst & (
+              (ex_valid == 1 && (rj == ex_dest || dest == ex_dest)) ||
+              (mem_valid == 1 && (rj == mem_dest || dest == mem_dest)) ||
+              (wb_valid == 1 && (rj == wb_dest || dest == wb_dest))
+          ))
+         ;
+
 
     wire id_allowin;
     wire id_ready_go;
     wire id_to_ex_valid;
-    assign id_ready_go = 1; // todo
+
+    assign id_ready_go = ~is_data_related; // todo
     assign id_allowin = !id_valid || id_ready_go && ex_allowin;
     assign id_to_ex_valid = id_valid && id_ready_go;
     always @(posedge clk) begin
         if (reset) begin
             id_valid <= 1'b0;
+            id_reg <= 200'b0;
+        end
+        else if (br_taken_cancel) begin
+            id_valid <= 1'b0; // 控制相关
         end
         else if (id_allowin) begin
-            id_valid <= validin; // valid in = 1
+            id_valid <= if_to_id_valid;
         end
 
-        if (validin && id_allowin) begin
-            id_reg[31:0] <= pc;
-            id_reg[63:32] <= data_in; // data in = inst_sram_rdata
+        if (if_to_id_valid && id_allowin) begin
+            id_reg[31:0] <= if_pc;
+            id_reg[63:32] <= if_data_in; // data in = inst_sram_rdata
         end
     end
+
+    wire [31:0] id_pc;
+    wire [31:0] id_inst;
 
     assign id_pc = id_reg[31:0];
     assign id_inst = id_reg[63:32];
 
+
+    wire ex_allowin;
+    wire ex_ready_go;
+    wire ex_to_mem_valid;
 
     // ex stage
     assign ex_ready_go = 1; // todo
@@ -394,6 +434,17 @@ module mycpu_top #
         end
     end
 
+    wire [31:0] ex_pc;
+    wire [31:0] ex_inst;
+    wire [31:0] ex_alu_src1;
+    wire [31:0] ex_alu_src2;
+    wire [11:0] ex_alu_op;
+
+    wire ex_mem_we;
+    wire ex_gr_we;
+    wire [4:0] ex_dest;
+    wire ex_res_from_mem;
+    wire [31:0] ex_rkd_value;
 
     assign ex_pc = ex_reg[31:0];
     assign ex_inst = ex_reg[63:32];
@@ -408,6 +459,9 @@ module mycpu_top #
     assign ex_rkd_value = ex_reg[179:148];
 
     // mem stage
+    wire mem_allowin;
+    wire mem_ready_go;
+    wire mem_to_wb_valid;
 
     assign mem_ready_go = 1; // todo
     assign mem_allowin = !mem_valid || mem_ready_go && wb_allowin;
@@ -432,11 +486,19 @@ module mycpu_top #
         end
     end
 
+    wire [31:0] mem_pc;
+    wire [31:0] mem_inst;
+    wire mem_mem_we;
+    wire mem_gr_we;
+    wire [4:0] mem_dest;
+    wire mem_res_from_mem;
+    wire [31:0] mem_rkd_value;
+    wire [31:0] mem_alu_result;
 
 
     assign mem_pc = mem_reg[31:0];
     assign mem_inst = mem_reg[63:32];
-    assign mem_mem_we = mem_reg[64];
+    assign mem_mem_we = mem_reg[64] & mem_valid;
     assign mem_gr_we = mem_reg[65];
     assign mem_dest = mem_reg[70:66];
     assign mem_res_from_mem = mem_reg[71];
@@ -453,6 +515,7 @@ module mycpu_top #
     always @(posedge clk) begin
         if (reset) begin
             wb_valid <= 1'b0;
+            wb_reg[199:0] <= 200'b0;
         end
         else if (wb_allowin) begin
             wb_valid = mem_to_wb_valid;
@@ -461,22 +524,28 @@ module mycpu_top #
         if (mem_to_wb_valid && wb_allowin) begin
             wb_reg[31:0] <= mem_pc;
             wb_reg[63:32] <= mem_inst;
-            wb_reg[64] <= mem_gr_we;
+            wb_reg[64] <= (wb_pc==mem_pc) ? 0 : mem_gr_we;
             wb_reg[69:65] <= mem_dest;
-			wb_reg[70] <= mem_res_from_mem;
-			wb_reg[102:71] <= mem_alu_result;
+            wb_reg[70] <= mem_res_from_mem;
+            wb_reg[102:71] <= mem_alu_result;
+            wb_reg[103] <= (wb_pc == mem_pc) ? wb_reg[103] + 1 : 0;
         end
     end
     assign validout = wb_valid && wb_ready_go; // not defined
     assign dataout = wb_reg; // not defined
 
-
+    wire [31:0] wb_pc;
+    wire [31:0] wb_inst;
+    wire wb_gr_we;
+    wire [4:0] wb_dest;
+    wire [31:0] wb_alu_result;
+    wire wb_res_from_mem;
 
     assign wb_pc = wb_reg[31:0];
     assign wb_inst = wb_reg[63:32];
-    assign wb_gr_we = wb_reg[64];
+    assign wb_gr_we = wb_reg[64] & wb_valid;
     assign wb_dest = wb_reg[69:65];
     assign wb_res_from_mem = wb_reg[70];
-	assign wb_alu_result = wb_reg[102:71];
+    assign wb_alu_result = wb_reg[102:71];
 
 endmodule
