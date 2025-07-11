@@ -115,6 +115,10 @@ module mycpu_top #
 
 	wire		inst_pcaddu12i;
 
+	wire		inst_mul_w;
+	wire		inst_mulh_w;
+	wire		inst_mulh_wu;
+
     wire        need_ui5;
     wire        need_si12;
     wire        need_si16;
@@ -214,6 +218,10 @@ module mycpu_top #
 
 	assign inst_pcaddu12i = op_31_26_d[6'h07] & ~inst[25];
 
+	assign inst_mul_w  = op_31_26_d[6'h00] & op_25_22_d[4'h0] & op_21_20_d[2'h1] & op_19_15_d[5'h18];
+	assign inst_mulh_w = op_31_26_d[6'h00] & op_25_22_d[4'h0] & op_21_20_d[2'h1] & op_19_15_d[5'h19];
+	assign inst_mulh_wu= op_31_26_d[6'h00] & op_25_22_d[4'h0] & op_21_20_d[2'h1] & op_19_15_d[5'h1a];
+
     assign alu_op[ 0] = inst_add_w | inst_addi_w | inst_ld_w | inst_st_w
            | inst_jirl | inst_bl | inst_pcaddu12i;
     assign alu_op[ 1] = inst_sub_w;
@@ -227,6 +235,9 @@ module mycpu_top #
     assign alu_op[ 9] = inst_srli_w | inst_srl_w;
     assign alu_op[10] = inst_srai_w | inst_sra_w;
     assign alu_op[11] = inst_lu12i_w;
+	assign alu_op[12] = inst_mul_w;
+	assign alu_op[13] = inst_mulh_w;
+	assign alu_op[14] = inst_mulh_wu;
 
     assign need_ui5   =  inst_slli_w | inst_srli_w | inst_srai_w;
 	assign need_ui12  =  inst_andi | inst_ori | inst_xori;
@@ -273,7 +284,8 @@ module mycpu_top #
 	   inst_xor | inst_slli_w | inst_srli_w | inst_srai_w |
 		inst_addi_w | inst_jirl | inst_bl | inst_lu12i_w |
 		inst_slti | inst_sltui | inst_andi | inst_ori |
-		inst_xori | inst_sll_w | inst_srl_w | inst_sra_w | inst_pcaddu12i;
+		inst_xori | inst_sll_w | inst_srl_w | inst_sra_w | inst_pcaddu12i |
+		inst_mul_w | inst_mulh_w | inst_mulh_wu;
     assign mem_forward = inst_ld_w;
     assign wb_forward = 0;
 
@@ -407,7 +419,7 @@ module mycpu_top #
     // 3.rj | rd = dest�?
     // st,beq,bne
 
-    wire rjk_dest_inst = inst_add_w | inst_sub_w | inst_slt | inst_sltu | inst_nor | inst_and | inst_or | inst_xor | inst_sll_w | inst_srl_w | inst_sra_w;
+    wire rjk_dest_inst = inst_add_w | inst_sub_w | inst_slt | inst_sltu | inst_nor | inst_and | inst_or | inst_xor | inst_sll_w | inst_srl_w | inst_sra_w | inst_mul_w | inst_mulh_w | inst_mulh_wu;
     wire rj_dest_inst = inst_slli_w | inst_srli_w | inst_srai_w | inst_addi_w | inst_ld_w | inst_jirl | inst_slti | inst_sltui | inst_andi | inst_ori | inst_xori;
     wire rjd_dest_inst = inst_st_w | inst_beq | inst_bne;
     wire is_data_related =
