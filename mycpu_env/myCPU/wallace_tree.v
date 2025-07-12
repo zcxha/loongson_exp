@@ -1,10 +1,11 @@
 module wallace_tree(
+	///17部分积相加的1位华莱士树
 	input wire [16:0] column_bits,
 	input wire [13:0] cin,
 	output wire [13:0] cout,
 	output wire sum_final,
 	output wire c_final
-);
+);// 可能需要流水化的 
 	wire s_01;
 	wire c_01;
 	adder u_add_01 (
