@@ -62,7 +62,6 @@ module mycpu_top #
     wire		div_res_remainder;
     wire        dst_is_r1;
     wire        gr_we;
-    wire        mem_we;
     wire        src_reg_is_rd;
     wire [4: 0] dest;
     wire [31:0] rj_value;
@@ -70,6 +69,10 @@ module mycpu_top #
     wire [31:0] imm;
     wire [31:0] br_offs;
     wire [31:0] jirl_offs;
+
+    wire op_st_b;
+    wire op_st_h;
+    wire op_st_w;
 
     wire [ 5:0] op_31_26;
     wire [ 3:0] op_25_22;
@@ -100,13 +103,23 @@ module mycpu_top #
     wire        inst_srli_w;
     wire        inst_srai_w;
     wire        inst_addi_w;
+    wire		inst_ld_b;
+    wire		inst_ld_h;
     wire        inst_ld_w;
+    wire		inst_st_b;
+    wire		inst_st_h;
     wire        inst_st_w;
+    wire		inst_ld_bu;
+    wire		inst_ld_hu;
     wire        inst_jirl;
     wire        inst_b;
     wire        inst_bl;
     wire        inst_beq;
     wire        inst_bne;
+    wire		inst_blt;
+    wire		inst_bge;
+    wire		inst_bltu;
+    wire		inst_bgeu;
     wire        inst_lu12i_w;
 
     wire		inst_slti;
@@ -155,6 +168,11 @@ module mycpu_top #
     wire [31:0] alu_result ;
     wire [31:0] EX_result  ;
 
+    wire 		mem_word;
+    wire		mem_half;
+    wire		mem_byte;
+    wire		mem_uext;
+    wire		mem_iext;
     wire [31:0] mem_result;
 
     wire [31:0] final_result;
@@ -209,13 +227,23 @@ module mycpu_top #
     assign inst_srli_w = op_31_26_d[6'h00] & op_25_22_d[4'h1] & op_21_20_d[2'h0] & op_19_15_d[5'h09];
     assign inst_srai_w = op_31_26_d[6'h00] & op_25_22_d[4'h1] & op_21_20_d[2'h0] & op_19_15_d[5'h11];
     assign inst_addi_w = op_31_26_d[6'h00] & op_25_22_d[4'ha];
+    assign inst_ld_b   = op_31_26_d[6'h0a] & op_25_22_d[4'h0];
+    assign inst_ld_h   = op_31_26_d[6'h0a] & op_25_22_d[4'h1];
     assign inst_ld_w   = op_31_26_d[6'h0a] & op_25_22_d[4'h2];
+    assign inst_st_b   = op_31_26_d[6'h0a] & op_25_22_d[4'h4];
+    assign inst_st_h   = op_31_26_d[6'h0a] & op_25_22_d[4'h5];
     assign inst_st_w   = op_31_26_d[6'h0a] & op_25_22_d[4'h6];
+    assign inst_ld_bu  = op_31_26_d[6'h0a] & op_25_22_d[4'h8];
+    assign inst_ld_hu  = op_31_26_d[6'h0a] & op_25_22_d[4'h9];
     assign inst_jirl   = op_31_26_d[6'h13];
     assign inst_b      = op_31_26_d[6'h14];
     assign inst_bl     = op_31_26_d[6'h15];
     assign inst_beq    = op_31_26_d[6'h16];
     assign inst_bne    = op_31_26_d[6'h17];
+    assign inst_blt    = op_31_26_d[6'h18];
+    assign inst_bge    = op_31_26_d[6'h19];
+    assign inst_bltu   = op_31_26_d[6'h1a];
+    assign inst_bgeu   = op_31_26_d[6'h1b];
     assign inst_lu12i_w= op_31_26_d[6'h05] & ~inst[25];
 
     assign inst_slti   = op_31_26_d[6'h00] & op_25_22_d[4'h8];
@@ -249,7 +277,7 @@ module mycpu_top #
     assign div_res_remainder = inst_mod_w | inst_mod_wu;
 
 
-    assign alu_op[ 0] = inst_add_w | inst_addi_w | inst_ld_w | inst_st_w
+    assign alu_op[ 0] = inst_add_w | inst_addi_w | inst_ld_w | inst_st_w | inst_ld_b | inst_ld_bu | inst_ld_h | inst_ld_hu | inst_st_b | inst_st_h
            | inst_jirl | inst_bl | inst_pcaddu12i;
     assign alu_op[ 1] = inst_sub_w;
     assign alu_op[ 2] = inst_slt | inst_slti;
@@ -263,10 +291,14 @@ module mycpu_top #
     assign alu_op[10] = inst_srai_w | inst_sra_w;
     assign alu_op[11] = inst_lu12i_w;
 
+    assign op_st_b = inst_st_b;
+    assign op_st_h = inst_st_h;
+    assign op_st_w = inst_st_w;
+
     assign need_ui5   =  inst_slli_w | inst_srli_w | inst_srai_w;
     assign need_ui12  =  inst_andi | inst_ori | inst_xori;
-    assign need_si12  =  inst_addi_w | inst_ld_w | inst_st_w | inst_slti | inst_sltui;
-    assign need_si16  =  inst_jirl | inst_beq | inst_bne;
+    assign need_si12  =  inst_addi_w | inst_ld_b | inst_ld_h | inst_ld_w | inst_ld_bu | inst_ld_hu | inst_st_b | inst_st_h | inst_st_w | inst_slti | inst_sltui;
+    assign need_si16  =  inst_jirl | inst_beq | inst_bne | inst_blt | inst_bge | inst_bltu | inst_bgeu;
     assign need_si20  =  inst_lu12i_w | inst_pcaddu12i;
     assign need_si26  =  inst_b | inst_bl;
     assign src2_is_4  =  inst_jirl | inst_bl;
@@ -282,7 +314,7 @@ module mycpu_top #
 
     assign jirl_offs = {{14{i16[15]}}, i16[15:0], 2'b0};
 
-    assign src_reg_is_rd = inst_beq | inst_bne | inst_st_w;
+    assign src_reg_is_rd = inst_beq | inst_bne | inst_blt | inst_bge | inst_bltu | inst_bgeu | inst_st_w | inst_st_b | inst_st_h;
 
     assign src1_is_pc    = inst_jirl | inst_bl | inst_pcaddu12i;
 
@@ -290,7 +322,13 @@ module mycpu_top #
            inst_srli_w |
            inst_srai_w |
            inst_addi_w |
+           inst_ld_b   |
+           inst_ld_bu  |
+           inst_ld_h   |
+           inst_ld_hu  |
            inst_ld_w   |
+           inst_st_b   |
+           inst_st_h   |
            inst_st_w   |
            inst_lu12i_w|
            inst_jirl   |
@@ -310,16 +348,21 @@ module mycpu_top #
            inst_slti | inst_sltui | inst_andi | inst_ori |
            inst_xori | inst_sll_w | inst_srl_w | inst_sra_w | inst_pcaddu12i |
            inst_div_w | inst_div_wu | inst_mod_w | inst_mod_wu;
-    assign mem_forward = inst_ld_w;
+    assign mem_forward = inst_ld_w | inst_ld_b | inst_ld_bu | inst_ld_h | inst_ld_hu;
     assign mul_forward = inst_mul_w | inst_mulh_w | inst_mulh_wu; // 表示在mem段前递mul的结果
     assign wb_forward = 0;
 
-    assign res_from_mem  = inst_ld_w;
+    assign res_from_mem  = inst_ld_w | inst_ld_b | inst_ld_bu | inst_ld_h | inst_ld_hu;
     assign res_from_mul  = inst_mul_w | inst_mulh_w | inst_mulh_wu;
     assign dst_is_r1     = inst_bl;
-    assign gr_we         = ~inst_st_w & ~inst_beq & ~inst_bne & ~inst_b;
-    assign mem_we        = inst_st_w;
+    assign gr_we         = ~inst_st_b & ~inst_st_h & ~inst_st_w & ~inst_beq & ~inst_bne & ~inst_blt & ~inst_bge & ~inst_bltu & ~inst_bgeu & ~inst_b;
     assign dest          = dst_is_r1 ? 5'd1 : rd;
+
+    assign mem_word		= inst_ld_w;
+    assign mem_half		= inst_ld_h | inst_ld_hu;
+    assign mem_byte		= inst_ld_b | inst_ld_bu;
+    assign mem_uext		= inst_ld_hu | inst_ld_bu;
+    assign mem_iext		= inst_ld_b | inst_ld_h;
 
     assign rf_raddr1 = rj;
     assign rf_raddr2 = src_reg_is_rd ? rd :rk;
@@ -348,13 +391,19 @@ module mycpu_top #
            rf_rdata2;
 
     assign rj_eq_rd = (rj_value == rkd_value);
+    assign rj_less_rd = ($signed(rj_value) < $signed(rkd_value));
+    assign rj_uless_rd = ($unsigned(rj_value) < $unsigned(rkd_value));
     assign br_taken = (   inst_beq  &&  rj_eq_rd
                           || inst_bne  && !rj_eq_rd
+                          || inst_blt && rj_less_rd
+                          || inst_bge && !rj_less_rd
+                          || inst_bltu && rj_uless_rd
+                          || inst_bgeu && !rj_uless_rd
                           || inst_jirl
                           || inst_bl
                           || inst_b
                       ) && valid && (br_target != if_pc);
-    assign br_target = (inst_beq || inst_bne || inst_bl || inst_b) ? (id_pc + br_offs) :
+    assign br_target = (inst_beq || inst_bne || inst_blt || inst_bge || inst_bltu || inst_bgeu || inst_bl || inst_b) ? (id_pc + br_offs) :
            /*inst_jirl*/ (rj_value + jirl_offs);
 
     assign alu_src1 = src1_is_pc  ? id_pc[31:0] : rj_value;
@@ -407,12 +456,47 @@ module mycpu_top #
            div_result :
            alu_result; // EX结果的MUX GATE
 
-    assign data_sram_we    = {4{mem_mem_we && valid}};
-    assign data_sram_addr  = mem_EX_result;
-    assign data_sram_wdata = mem_rkd_value;
+    wire [3:0] mem_we;
+    assign mem_we = mem_op_st_b ? (mem_EX_result[1:0]==2'b00 ? 4'b0001 :
+                                   mem_EX_result[1:0]==2'b01 ? 4'b0010 :
+                                   mem_EX_result[1:0]==2'b10 ? 4'b0100 :
+                                   4'b1000) :
+					mem_op_st_h ? (mem_EX_result[1:0]==2'b00 ? 4'b0011 :
+									4'b1100) :
+									{4{mem_op_st_w}};
 
-    assign mem_result   = data_sram_rdata;
-    assign final_result = wb_res_from_mem ? data_sram_rdata :
+    assign data_sram_we    = mem_we & {4{valid}};
+    assign data_sram_addr  = mem_EX_result & 32'hFFFF_FFFC;
+    assign data_sram_wdata = mem_op_st_b ? {4{mem_rkd_value[7:0]}} :
+							mem_op_st_h ? {2{mem_rkd_value[15:0]}} :
+							mem_rkd_value;
+
+	wire [31:0] mem_out;
+    assign mem_out =
+           wb_mem_word ? data_sram_rdata :
+           wb_mem_half ? (wb_EX_result[1:0] == 2'b00 ? {16'b0, data_sram_rdata[15:0]} :
+                          {16'b0, data_sram_rdata[31:16]}) :
+           wb_mem_byte ? (wb_EX_result[1:0] == 2'b00 ? {24'b0, data_sram_rdata[7:0]}   :
+                          wb_EX_result[1:0] == 2'b01 ? {24'b0, data_sram_rdata[15:8]}  :
+                          wb_EX_result[1:0] == 2'b10 ? {24'b0, data_sram_rdata[23:16]} :
+                          {24'b0, data_sram_rdata[31:24]}) :
+           32'b0;
+
+
+    assign mem_result =
+           wb_mem_uext ? (
+               wb_mem_half ? {16'b0, mem_out[15:0]} :
+               wb_mem_byte ? {24'b0, mem_out[7:0]} :
+               mem_out
+           ) :
+           wb_mem_iext ? (
+               wb_mem_half ? {{16{mem_out[15]}}, mem_out[15:0]} :
+               wb_mem_byte ? {{24{mem_out[7]}}, mem_out[7:0]} :
+               mem_out
+           ) :
+           mem_out;
+
+    assign final_result = wb_res_from_mem ? mem_result :
            wb_res_from_mul ? wb_mul_result : // WB的MUX ：选择WB段才读出的MEM请求的数据，还是MEM段才有的MUL数据，还是EX段的数据
            wb_EX_result;
 
@@ -490,8 +574,8 @@ module mycpu_top #
     // st,beq,bne
 
     wire rjk_dest_inst = inst_add_w | inst_sub_w | inst_slt | inst_sltu | inst_nor | inst_and | inst_or | inst_xor | inst_sll_w | inst_srl_w | inst_sra_w | inst_mul_w | inst_mulh_w | inst_mulh_wu | inst_div_w | inst_div_wu | inst_mod_w | inst_mod_wu;
-    wire rj_dest_inst = inst_slli_w | inst_srli_w | inst_srai_w | inst_addi_w | inst_ld_w | inst_jirl | inst_slti | inst_sltui | inst_andi | inst_ori | inst_xori;
-    wire rjd_dest_inst = inst_st_w | inst_beq | inst_bne;
+    wire rj_dest_inst = inst_slli_w | inst_srli_w | inst_srai_w | inst_addi_w | inst_ld_w | inst_ld_b | inst_ld_bu | inst_ld_h | inst_ld_hu | inst_jirl | inst_slti | inst_sltui | inst_andi | inst_ori | inst_xori;
+    wire rjd_dest_inst = inst_st_w | inst_st_b | inst_st_h | inst_beq | inst_bne | inst_blt | inst_bge | inst_bltu | inst_bgeu;
     wire is_data_related =
          (rjk_dest_inst & (( ex_valid == 1 && (rj == ex_dest || rk == ex_dest) ) ||
                            ( mem_valid == 1 && (rj == mem_dest || rk == mem_dest) ) ||
@@ -570,7 +654,6 @@ module mycpu_top #
             ex_reg[95:64] <= alu_src1;
             ex_reg[127:96] <= alu_src2;
             ex_reg[139:128] <= alu_op;
-            ex_reg[140] <= mem_we;
             ex_reg[141] <= gr_we;
             ex_reg[146:142] <= dest;
             ex_reg[147] <= res_from_mem;
@@ -590,6 +673,16 @@ module mycpu_top #
             ex_reg[219] <= div_enable;
             ex_reg[220] <= div_signed;
             ex_reg[221] <= div_res_remainder;
+
+            ex_reg[222] <= mem_word;
+            ex_reg[223] <= mem_half;
+            ex_reg[224] <= mem_byte;
+            ex_reg[225] <= mem_uext;
+            ex_reg[226] <= mem_iext;
+
+            ex_reg[227] <= op_st_b;
+            ex_reg[228] <= op_st_h;
+            ex_reg[229] <= op_st_w;
         end
     end
 
@@ -608,13 +701,21 @@ module mycpu_top #
     wire		ex_div_signed;
     wire		ex_div_res_remainder;
 
+    wire		ex_op_st_b;
+    wire		ex_op_st_h;
+    wire		ex_op_st_w;
 
-    wire ex_mem_we;
+
     wire ex_gr_we;
     wire [4:0] ex_dest;
     wire ex_res_from_mem;
     wire [31:0] ex_rj_value;
     wire [31:0] ex_rkd_value;
+    wire ex_mem_word;
+    wire ex_mem_half;
+    wire ex_mem_byte;
+    wire ex_mem_uext;
+    wire ex_mem_iext;
 
     wire ex_ex_forward;
     wire ex_mem_forward;
@@ -635,7 +736,6 @@ module mycpu_top #
     assign ex_alu_src2 = ex_reg[127:96];
     assign ex_alu_op = ex_reg[139:128];
 
-    assign ex_mem_we = ex_reg[140];
     assign ex_gr_we = ex_reg[141];
     assign ex_dest = ex_reg[146:142];
     assign ex_res_from_mem = ex_reg[147];
@@ -645,6 +745,16 @@ module mycpu_top #
     assign ex_ex_forward = ex_reg[180];
     assign ex_mem_forward = ex_reg[181];
     assign ex_wb_forward = ex_reg[182];
+
+    assign ex_mem_word = ex_reg[222];
+    assign ex_mem_half = ex_reg[223];
+    assign ex_mem_byte = ex_reg[224];
+    assign ex_mem_uext = ex_reg[225];
+    assign ex_mem_iext = ex_reg[226];
+
+    assign ex_op_st_b = ex_reg[227];
+    assign ex_op_st_h = ex_reg[228];
+    assign ex_op_st_w = ex_reg[229];
 
     // mem stage
     wire mem_allowin;
@@ -666,7 +776,6 @@ module mycpu_top #
         if (ex_to_mem_valid && mem_allowin) begin
             mem_reg[31:0] <= ex_pc;
             mem_reg[63:32] <= ex_inst;
-            mem_reg[64] <= ex_mem_we;
             mem_reg[65] <= ex_gr_we;
             mem_reg[70:66] <= ex_dest;
             mem_reg[71] <= ex_res_from_mem;
@@ -682,13 +791,20 @@ module mycpu_top #
             mem_reg[141] <= ex_res_from_mul;
             mem_reg[142] <= ex_mul_forward;
 
+            mem_reg[143] <= ex_mem_word;
+            mem_reg[144] <= ex_mem_half;
+            mem_reg[145] <= ex_mem_byte;
+            mem_reg[146] <= ex_mem_uext;
+            mem_reg[147] <= ex_mem_iext;
 
+            mem_reg[148] <= ex_op_st_b;
+            mem_reg[149] <= ex_op_st_h;
+            mem_reg[150] <= ex_op_st_w;
         end
     end
 
     wire [31:0] mem_pc;
     wire [31:0] mem_inst;
-    wire mem_mem_we;
     wire mem_gr_we;
     wire [4:0] mem_dest;
     wire mem_res_from_mem;
@@ -703,10 +819,19 @@ module mycpu_top #
     wire mem_wb_forward;
     wire mem_mul_forward;
 
+    wire mem_mem_word;
+    wire mem_mem_half;
+    wire mem_mem_byte;
+    wire mem_mem_uext;
+    wire mem_mem_iext;
+
+    wire mem_op_st_b;
+    wire mem_op_st_h;
+    wire mem_op_st_w;
+
 
     assign mem_pc = mem_reg[31:0];
     assign mem_inst = mem_reg[63:32];
-    assign mem_mem_we = mem_reg[64] & mem_valid;
     assign mem_gr_we = mem_reg[65];
     assign mem_dest = mem_reg[70:66];
     assign mem_res_from_mem = mem_reg[71];
@@ -720,6 +845,16 @@ module mycpu_top #
     assign mem_ex_forward = mem_reg[136];
     assign mem_mem_forward = mem_reg[137];
     assign mem_wb_forward = mem_reg[138];
+
+    assign mem_mem_word = mem_reg[143];
+    assign mem_mem_half = mem_reg[144];
+    assign mem_mem_byte = mem_reg[145];
+    assign mem_mem_uext = mem_reg[146];
+    assign mem_mem_iext = mem_reg[147];
+
+    assign mem_op_st_b = mem_reg[148];
+    assign mem_op_st_h = mem_reg[149];
+    assign mem_op_st_w = mem_reg[150];
 
     // wb stage
     wire out_allow = 1;
@@ -752,6 +887,12 @@ module mycpu_top #
             wb_reg[137:106] <= mem_mul_result;
             wb_reg[138] <= mem_res_from_mul;
             wb_reg[139] <= mem_mul_forward;
+
+            wb_reg[140] <= mem_mem_word;
+            wb_reg[141] <= mem_mem_half;
+            wb_reg[142] <= mem_mem_byte;
+            wb_reg[143] <= mem_mem_uext;
+            wb_reg[144] <= mem_mem_iext;
         end
     end
     assign validout = wb_valid && wb_ready_go; // not defined
@@ -772,6 +913,12 @@ module mycpu_top #
     wire wb_mem_forward;
     wire wb_wb_forward;
 
+    wire wb_mem_word;
+    wire wb_mem_half;
+    wire wb_mem_byte;
+    wire wb_mem_uext;
+    wire wb_mem_iext;
+
     assign wb_pc = wb_reg[31:0];
     assign wb_inst = wb_reg[63:32];
     assign wb_gr_we = wb_reg[64] & wb_valid;
@@ -786,5 +933,11 @@ module mycpu_top #
     assign wb_ex_forward = wb_reg[103];
     assign wb_mem_forward = wb_reg[104];
     assign wb_wb_forward = wb_reg[105];
+
+    assign wb_mem_word = wb_reg[140];
+    assign wb_mem_half = wb_reg[141];
+    assign wb_mem_byte = wb_reg[142];
+    assign wb_mem_uext = wb_reg[143];
+    assign wb_mem_iext = wb_reg[144];
 
 endmodule
