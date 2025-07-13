@@ -64,20 +64,20 @@ module mul(
         end
     endgenerate
 
-    reg [16:0] wallace_input_reg [65:0];
-    integer i_0;
-    always @(posedge mul_clk or negedge resetn) begin
-        if (!resetn) begin
-            for (i_0 = 0; i_0 < 66; i_0 = i_0 + 1) begin
-                wallace_input_reg[i_0] <= 17'b0;
-            end
-        end
-        else begin
-            for (i_0 = 0; i_0 < 66; i_0 = i_0 + 1) begin
-                wallace_input_reg[i_0] <= wallace_input[i_0];
-            end
-        end
-    end
+    // reg [16:0] wallace_input_reg [65:0];
+    // integer i_0;
+    // always @(posedge mul_clk or negedge resetn) begin
+    //     if (!resetn) begin
+    //         for (i_0 = 0; i_0 < 66; i_0 = i_0 + 1) begin
+    //             wallace_input_reg[i_0] <= 17'b0;
+    //         end
+    //     end
+    //     else begin
+    //         for (i_0 = 0; i_0 < 66; i_0 = i_0 + 1) begin
+    //             wallace_input_reg[i_0] <= wallace_input[i_0];
+    //         end
+    //     end
+    // end
 
 
     //**part3 Wallace tree
@@ -88,14 +88,14 @@ module mul(
     assign carry[0] = 14'b0;
     genvar i3;
     generate
-        for(i3 = 0; i3 <= 65; i3 = i3 + 1) begin : wallace_loop //因为低位在63开始
+        for(i3 = 0; i3 <= 32; i3 = i3 + 1) begin : wallace_loop //因为低位在63开始
             // input: wallace_input[i]
             // input: carry[i]
             // output: carry[i+1]
             // output: sum[i]
             // output declaration of module wallace_tree
             wallace_tree u_wallace_tree(
-                             .column_bits 	(wallace_input_reg[i3]  ),
+                             .column_bits 	(wallace_input[i3]  ),
                              .cin         	(carry[i3]          ),
                              .cout        	(carry[i3+1]         ),
                              .sum_final   	(sum_out[i3]    ),
@@ -104,11 +104,56 @@ module mul(
         end
     endgenerate
 
+	reg [16:0] pl_wallace_input [65:0];
+	reg [13:0] pl_carry; // 流水段1最后一层carry结果
+	reg [32:0] pl_carry_out; // 流水段1的carry out 结果
+	reg [32:0] pl_sum_out; // 流水段1的sum out结果
+	integer i_0;
+
+	always @(posedge mul_clk) begin
+		if (~resetn) begin
+			for (i_0 = 0; i_0 < 66; i_0 = i_0 + 1) begin
+				pl_wallace_input[i_0] <=17'b0;
+			end
+			pl_carry <= 14'b0;
+			pl_carry_out <= 66'b0;
+			pl_sum_out <= 66'b0;
+		end
+		else begin
+			for (i_0 = 0; i_0 < 66; i_0 = i_0 + 1) begin
+				pl_wallace_input[i_0] <= wallace_input[i_0];
+			end
+			pl_carry <= carry[33];
+			pl_carry_out <= carry_out[32:0];
+			pl_sum_out <= sum_out[32:0];
+		end
+	end
+	// ***流水段2***
+	wire [13:0] pl2_carry [66:0];
+	wire [65:0] pl2_sum_out;
+	wire [65:0] pl2_carry_out;
+	assign pl2_carry[33] = pl_carry;
+	assign pl2_sum_out[32:0] = pl_sum_out;
+	assign pl2_carry_out[32:0] = pl_carry_out;
+
+    genvar pl_i3;
+    generate
+        for (pl_i3 = 33; pl_i3 <= 65; pl_i3 = pl_i3 + 1) begin : pl_wallace
+            wallace_tree u_wallace_tree(
+                             .column_bits 	(pl_wallace_input[pl_i3]  ),
+                             .cin         	(pl2_carry[pl_i3]          ),
+                             .cout        	(pl2_carry[pl_i3+1]         ),
+                             .sum_final   	(pl2_sum_out[pl_i3]    ),
+                             .c_final     	(pl2_carry_out[pl_i3]      )
+                         );
+        end
+    endgenerate
+
     wire [65:0] addsrc1;
     wire [65:0] addsrc2;
 
-    assign addsrc1 = sum_out;
-    assign addsrc2 = carry_out << 1;
+    assign addsrc1 = pl2_sum_out;
+    assign addsrc2 = pl2_carry_out << 1;
 
     wire [65:0] result_full;
     assign result_full = addsrc1 + addsrc2;

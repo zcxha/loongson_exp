@@ -17,48 +17,40 @@ module div(
     assign src1 = (div_signed & x[31]) ? ((~x) + 1) : x;
     assign src2 = (div_signed & y[31]) ? ((~y) + 1) : y;
 
-	reg shift_run;
+    reg shift_run;
 
     reg [31:0] y_reg; // 除数寄存器
     reg src1_sign;
     reg src2_sign;
 
     reg [32:0] try_reg; // 试减
-	reg [32:0] init_treg;
+    reg [32:0] init_treg;
 
 
     reg [63:0] RQ_reg;
+
     always @(posedge div_clk) begin
         if (~resetn) begin
             count <= 6'b0;
             complete <= 1'b0;
-			shift_run <= 1'b0;
+            shift_run <= 1'b0;
             y_reg <= 32'b0;
             RQ_reg <= 64'b0;
+            try_reg = 33'b0;
         end
+
         if (div && !shift_run && !complete) begin
-			RQ_reg <= {32'b0,src1};
+            RQ_reg <= {32'b0,src1};
             y_reg <= src2;
             src1_sign <= div_signed & x[31];
             src2_sign <= div_signed & y[31];
-			shift_run <= 1'b1;
-			count <= 6'b0;
+            shift_run <= 1'b1;
+            count <= 6'b0;
         end
 
-        if (count == 6'd31) begin
-            complete <= 1'b1;
-			shift_run <= 1'b0;
-		end else begin
-			complete <= 1'b0;
-		end
-    end
-
-    always @(posedge div_clk) begin
-        if (~resetn) begin
-            try_reg = 33'b0;
-        end
+		// 迭代器
         if (div && shift_run && !complete) begin
-			count <= count + 1;
+            count <= count + 1;
             try_reg = RQ_reg[63:31] + (~{1'b0,y_reg[31:0]}) + 1; // 试减
 
             if (try_reg[32] == 1) begin
@@ -69,6 +61,14 @@ module div(
                 RQ_reg[63:32] <= try_reg[31:0];
                 RQ_reg[0] <= 1;
             end
+        end
+
+        if (count == 6'd31) begin
+            complete <= 1'b1;
+            shift_run <= 1'b0;
+        end
+        else begin
+            complete <= 1'b0;
         end
     end
 
