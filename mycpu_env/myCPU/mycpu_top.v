@@ -55,7 +55,7 @@ module mycpu_top #
     wire        res_from_mem;
     wire		mul_signed;
     wire		mul_hres;
-    wire		res_from_mul;
+    wire		mul_enable;
 
     wire		div_enable;
     wire		div_signed;
@@ -271,6 +271,7 @@ module mycpu_top #
 
     assign mul_signed = inst_mul_w | inst_mulh_w;
     assign mul_hres = inst_mulh_w | inst_mulh_wu;
+    assign mul_enable = inst_mul_w | inst_mulh_w | inst_mulh_wu;
 
     assign div_enable = inst_div_w | inst_mod_w | inst_div_wu | inst_mod_wu;
     assign div_signed = inst_div_w | inst_mod_w;
@@ -347,13 +348,11 @@ module mycpu_top #
            inst_addi_w | inst_jirl | inst_bl | inst_lu12i_w |
            inst_slti | inst_sltui | inst_andi | inst_ori |
            inst_xori | inst_sll_w | inst_srl_w | inst_sra_w | inst_pcaddu12i |
-           inst_div_w | inst_div_wu | inst_mod_w | inst_mod_wu;
+           inst_div_w | inst_div_wu | inst_mod_w | inst_mod_wu | inst_mul_w | inst_mulh_w | inst_mulh_wu;
     assign mem_forward = inst_ld_w | inst_ld_b | inst_ld_bu | inst_ld_h | inst_ld_hu;
-    assign mul_forward = inst_mul_w | inst_mulh_w | inst_mulh_wu; // 表示在mem段前递mul的结果
     assign wb_forward = 0;
 
     assign res_from_mem  = inst_ld_w | inst_ld_b | inst_ld_bu | inst_ld_h | inst_ld_hu;
-    assign res_from_mul  = inst_mul_w | inst_mulh_w | inst_mulh_wu;
     assign dst_is_r1     = inst_bl;
     assign gr_we         = ~inst_st_b & ~inst_st_h & ~inst_st_w & ~inst_beq & ~inst_bne & ~inst_blt & ~inst_bge & ~inst_bltu & ~inst_bgeu & ~inst_b;
     assign dest          = dst_is_r1 ? 5'd1 : rd;
@@ -380,14 +379,12 @@ module mycpu_top #
     assign rj_value  = (ex_valid && rf_raddr1 == ex_dest && ex_ex_forward)? EX_result :
            (mem_valid && rf_raddr1 == mem_dest && mem_ex_forward) ? mem_EX_result: // mem段之间是没有优先级的 但是流水段之间有。
            (mem_valid && rf_raddr1 == mem_dest && mem_mem_forward)? mem_result:
-           (mem_valid && rf_raddr1 == mem_dest && mem_mul_forward)? mem_mul_result:
-           (wb_valid && rf_raddr1 == wb_dest && (wb_wb_forward || wb_ex_forward || wb_mem_forward || wb_mul_forward))? final_result:
+           (wb_valid && rf_raddr1 == wb_dest && (wb_wb_forward || wb_ex_forward || wb_mem_forward))? final_result:
            rf_rdata1;
     assign rkd_value = (ex_valid && rf_raddr2 == ex_dest && ex_ex_forward)? EX_result :
            (mem_valid && rf_raddr2 == mem_dest && mem_ex_forward) ? mem_EX_result:
            (mem_valid && rf_raddr2 == mem_dest && mem_mem_forward)? mem_result:
-           (mem_valid && rf_raddr2 == mem_dest && mem_mul_forward)? mem_mul_result:
-           (wb_valid && rf_raddr2 == wb_dest && (wb_wb_forward || wb_ex_forward || wb_mem_forward || wb_mul_forward))? final_result:
+           (wb_valid && rf_raddr2 == wb_dest && (wb_wb_forward || wb_ex_forward || wb_mem_forward))? final_result:
            rf_rdata2;
 
     assign rj_eq_rd = (rj_value == rkd_value);
@@ -418,19 +415,15 @@ module mycpu_top #
 
     // mul
     // output declaration of module mul
-    wire [63:0] mul_result;
+    wire [31:0] mul_result;
 
-    mul u_mul(
-            .mul_clk    	(clk     ),
-            .resetn     	(resetn      ),
-            .mul_signed 	(ex_mul_signed  ),
-            .x          	(ex_alu_src1           ),
-            .y          	(ex_alu_src2           ),
-            .result     	(mul_result      )
-        );
-
-    wire [31:0] mem_mul_result; // 最终要写回的乘法结果
-    assign mem_mul_result = mem_mul_hres ? mul_result[63:32] : mul_result[31:0];
+    mul_ip u_mul_ip(
+               .mul_hres		(ex_mul_hres),
+               .mul_signed 	(ex_mul_signed  ),
+               .x          	(ex_alu_src1           ),
+               .y          	(ex_alu_src2           ),
+               .result     	(mul_result      )
+           );
 
     // div
     // output declaration of module div
@@ -452,8 +445,8 @@ module mycpu_top #
     wire [31:0] div_result;
     assign div_result = ex_div_res_remainder ? div_r : div_s;
 
-    assign EX_result = ex_div_enable ?
-           div_result :
+    assign EX_result = ex_div_enable ? div_result :
+           ex_mul_enable ? mul_result :
            alu_result; // EX结果的MUX GATE
 
     wire [3:0] mem_we;
@@ -461,17 +454,17 @@ module mycpu_top #
                                    mem_EX_result[1:0]==2'b01 ? 4'b0010 :
                                    mem_EX_result[1:0]==2'b10 ? 4'b0100 :
                                    4'b1000) :
-					mem_op_st_h ? (mem_EX_result[1:0]==2'b00 ? 4'b0011 :
-									4'b1100) :
-									{4{mem_op_st_w}};
+           mem_op_st_h ? (mem_EX_result[1:0]==2'b00 ? 4'b0011 :
+                          4'b1100) :
+           {4{mem_op_st_w}};
 
     assign data_sram_we    = mem_we & {4{valid}};
     assign data_sram_addr  = mem_EX_result & 32'hFFFF_FFFC;
     assign data_sram_wdata = mem_op_st_b ? {4{mem_rkd_value[7:0]}} :
-							mem_op_st_h ? {2{mem_rkd_value[15:0]}} :
-							mem_rkd_value;
+           mem_op_st_h ? {2{mem_rkd_value[15:0]}} :
+           mem_rkd_value;
 
-	wire [31:0] mem_out;
+    wire [31:0] mem_out;
     assign mem_out =
            wb_mem_word ? data_sram_rdata :
            wb_mem_half ? (wb_EX_result[1:0] == 2'b00 ? {16'b0, data_sram_rdata[15:0]} :
@@ -497,7 +490,6 @@ module mycpu_top #
            mem_out;
 
     assign final_result = wb_res_from_mem ? mem_result :
-           wb_res_from_mul ? wb_mul_result : // WB的MUX ：选择WB段才读出的MEM请求的数据，还是MEM段才有的MUL数据，还是EX段的数据
            wb_EX_result;
 
     assign rf_we    = wb_gr_we && valid;
@@ -601,8 +593,7 @@ module mycpu_top #
 
     assign id_ready_go =~(
                ((ex_valid & ex_mem_forward & (ex_dest == rf_raddr1 || ex_dest == rf_raddr2)) |  // load-use 阻塞一次 block ram再阻塞一次 一共两次阻塞
-                (mem_valid & mem_mem_forward & (mem_dest == rf_raddr1 || mem_dest == rf_raddr2)) |
-                (ex_valid & ex_mul_forward & (ex_dest == rf_raddr1 ||| ex_dest == rf_raddr2))) // mul在mem段出结果，因此阻塞一次
+                (mem_valid & mem_mem_forward & (mem_dest == rf_raddr1 || mem_dest == rf_raddr2)))
                & id_need_forward_data
            ); // todo
     assign id_allowin = !id_valid || id_ready_go && ex_allowin;
@@ -667,8 +658,7 @@ module mycpu_top #
 
             ex_reg[215] <= mul_signed;
             ex_reg[216] <= mul_hres;
-            ex_reg[217] <= res_from_mul;
-            ex_reg[218] <= mul_forward;
+            ex_reg[217] <= mul_enable;
 
             ex_reg[219] <= div_enable;
             ex_reg[220] <= div_signed;
@@ -688,8 +678,7 @@ module mycpu_top #
 
     wire		ex_mul_signed;
     wire		ex_mul_hres;
-    wire		ex_res_from_mul;
-    wire		ex_mul_forward;
+    wire		ex_mul_enable;
 
     wire [31:0] ex_pc;
     wire [31:0] ex_inst;
@@ -723,8 +712,7 @@ module mycpu_top #
 
     assign ex_mul_signed = ex_reg[215];
     assign ex_mul_hres = ex_reg[216];
-    assign ex_res_from_mul = ex_reg[217];
-    assign ex_mul_forward = ex_reg[218];
+    assign ex_mul_enable = ex_reg[217];
 
     assign ex_div_enable = ex_reg[219];
     assign ex_div_signed = ex_reg[220];
@@ -786,11 +774,6 @@ module mycpu_top #
             mem_reg[137] <= ex_mem_forward;
             mem_reg[138] <= ex_wb_forward;
 
-            // mem_reg[139] <= ex_mul_signed;
-            mem_reg[140] <= ex_mul_hres;
-            mem_reg[141] <= ex_res_from_mul;
-            mem_reg[142] <= ex_mul_forward;
-
             mem_reg[143] <= ex_mem_word;
             mem_reg[144] <= ex_mem_half;
             mem_reg[145] <= ex_mem_byte;
@@ -811,13 +794,9 @@ module mycpu_top #
     wire [31:0] mem_rkd_value;
     wire [31:0] mem_EX_result;
 
-    wire mem_res_from_mul;
-    wire mem_mul_hres;
-
     wire mem_ex_forward;
     wire mem_mem_forward;
     wire mem_wb_forward;
-    wire mem_mul_forward;
 
     wire mem_mem_word;
     wire mem_mem_half;
@@ -837,10 +816,6 @@ module mycpu_top #
     assign mem_res_from_mem = mem_reg[71];
     assign mem_rkd_value = mem_reg[103:72];
     assign mem_EX_result = mem_reg[135:104];
-
-    assign mem_mul_hres = mem_reg[140];
-    assign mem_res_from_mul = mem_reg[141];
-    assign mem_mul_forward = mem_reg[142];
 
     assign mem_ex_forward = mem_reg[136];
     assign mem_mem_forward = mem_reg[137];
@@ -884,10 +859,6 @@ module mycpu_top #
             wb_reg[104] <= mem_mem_forward;
             wb_reg[105] <= mem_wb_forward;
 
-            wb_reg[137:106] <= mem_mul_result;
-            wb_reg[138] <= mem_res_from_mul;
-            wb_reg[139] <= mem_mul_forward;
-
             wb_reg[140] <= mem_mem_word;
             wb_reg[141] <= mem_mem_half;
             wb_reg[142] <= mem_mem_byte;
@@ -905,10 +876,6 @@ module mycpu_top #
     wire [31:0] wb_EX_result;
     wire wb_res_from_mem;
 
-    wire [31:0] wb_mul_result;
-    wire wb_res_from_mul;
-    wire wb_mul_forward;
-
     wire wb_ex_forward;
     wire wb_mem_forward;
     wire wb_wb_forward;
@@ -925,10 +892,6 @@ module mycpu_top #
     assign wb_dest = wb_reg[69:65];
     assign wb_res_from_mem = wb_reg[70];
     assign wb_EX_result = wb_reg[102:71];
-
-    assign wb_mul_result = wb_reg[137:106];
-    assign wb_res_from_mul = wb_reg[138];
-    assign wb_mul_forward = wb_reg[139];
 
     assign wb_ex_forward = wb_reg[103];
     assign wb_mem_forward = wb_reg[104];
