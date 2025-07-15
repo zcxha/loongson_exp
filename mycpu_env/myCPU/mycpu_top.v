@@ -1,3 +1,4 @@
+`include "define.v"
 module mycpu_top #
     (
         parameter WIDTH = 500
@@ -47,6 +48,7 @@ module mycpu_top #
     wire [31:0] br_target;
     wire [31:0] inst;
     reg  [31:0] pc;
+    wire		pref_adef;
 
     wire [11:0] alu_op;
     wire        load_op;
@@ -144,6 +146,10 @@ module mycpu_top #
     wire		inst_mod_w;
     wire		inst_mod_wu;
 
+    wire		inst_syscall;
+    wire		inst_break;
+    wire		inst_ertn;
+
     wire        need_ui5;
     wire        need_si12;
     wire        need_si16;
@@ -165,21 +171,42 @@ module mycpu_top #
 
     wire [31:0] alu_src1   ;
     wire [31:0] alu_src2   ;
-    wire [31:0] alu_result ;
-    wire [31:0] EX_result  ;
 
     wire 		mem_word;
     wire		mem_half;
     wire		mem_byte;
     wire		mem_uext;
     wire		mem_iext;
+
+    wire id_ine;
+    wire id_syscall;
+    wire id_break;
+    wire id_has_int; // 中断标记到ID段
+	wire id_ertn_flush;
+
+    /***EX***/
+
+    wire [31:0] alu_result ;
+    wire [31:0] EX_result  ;
+
+    /***MEM***/
+
     wire [31:0] mem_result;
+
+    /***WB***/
 
     wire [31:0] final_result;
 
-    assign seq_pc       = ~if_allowin ? pc : pc + 32'h4;
-    assign nextpc       = (br_taken & id_valid) ?br_target : seq_pc;
+    /*------pre-IF------*/
 
+    assign seq_pc       = ~if_allowin ? pc : pc + 32'h4;
+    assign nextpc = (wb_valid && (wb_has_exception || wb_ertn_flush)) ?
+           ( {32{wb_has_exception}} & wb_ex_entry |
+             {32{wb_ertn_flush}}   & wb_ertn_pc ) :
+           (br_taken && id_valid) ?
+           br_target :
+           seq_pc;
+    assign pref_adef	= ((nextpc & 2'b11) != 2'b00);
 
     always @(posedge clk) begin
         if (reset) begin
@@ -191,15 +218,20 @@ module mycpu_top #
     end
 
     assign inst_sram_we    = 4'b0;
-    assign inst_sram_addr  = nextpc;
+    assign inst_sram_addr  = pref_adef ? 32'b1c000000 : nextpc; // 发生取指地址错时将PC置默认值
     assign inst_sram_wdata = 32'b0;
     assign inst            = id_inst;
-    // ID 段是把所有标志都生成
+
+    // ID 段把所有标志都生成
+    /*------ID------*/
 
     assign op_31_26  = inst[31:26];
     assign op_25_22  = inst[25:22];
     assign op_21_20  = inst[21:20];
     assign op_19_15  = inst[19:15];
+    assign op_14_10  = inst[14:10];
+    assign op_09_05  = inst[9:5];
+    assign op_04_00  = inst[4:0];
 
     assign rd   = inst[ 4: 0];
     assign rj   = inst[ 9: 5];
@@ -214,6 +246,9 @@ module mycpu_top #
     decoder_4_16 u_dec1(.in(op_25_22 ), .out(op_25_22_d ));
     decoder_2_4  u_dec2(.in(op_21_20 ), .out(op_21_20_d ));
     decoder_5_32 u_dec3(.in(op_19_15 ), .out(op_19_15_d ));
+    decoder_5_32 u_dec3(.in(op_14_10 ), .out(op_14_10_d ));
+    decoder_5_32 u_dec3(.in(op_09_05 ), .out(op_09_05_d ));
+    decoder_5_32 u_dec3(.in(op_04_00 ), .out(op_04_00_d ));
 
     assign inst_add_w  = op_31_26_d[6'h00] & op_25_22_d[4'h0] & op_21_20_d[2'h1] & op_19_15_d[5'h00];
     assign inst_sub_w  = op_31_26_d[6'h00] & op_25_22_d[4'h0] & op_21_20_d[2'h1] & op_19_15_d[5'h02];
@@ -268,6 +303,24 @@ module mycpu_top #
     assign inst_mod_w  = op_31_26_d[6'h00] & op_25_22_d[4'h0] & op_21_20_d[2'h2] & op_19_15_d[5'h01];
     assign inst_div_wu = op_31_26_d[6'h00] & op_25_22_d[4'h0] & op_21_20_d[2'h2] & op_19_15_d[5'h02];
     assign inst_mod_wu = op_31_26_d[6'h00] & op_25_22_d[4'h0] & op_21_20_d[2'h2] & op_19_15_d[5'h03];
+
+    assign inst_break = op_31_26_d[6'h00] & op_25_22_d[4'h0] & op_21_20_d[2'h2] & op_19_15_d[5'h14];
+    assign inst_syscall = op31_26_d[6'h00] & op_25_22_d[4'h0] & op_21_20_d[2'h2] & op_19_15_d[5'h16];
+    assign inst_ertn = op31_26_d[6'h01] & op_25_22_d[4'h9] & op_21_20_d[2'h0] & op_19_15_d[5'h10] & op_14_10_d[5'h0e] & op_09_05_d[5'h00] & op_04_00_d[5'h00];
+
+    assign id_ine = ~(inst_add_w | inst_sub_w | inst_slt | inst_sltu | inst_nor
+                      | inst_and | inst_or | inst_xor | inst_slli_w | inst_srli_w
+                      | inst_srai_w | inst_addi_w | inst_ld_b | inst_ld_h | inst_ld_w
+                      | inst_st_b | inst_st_h | inst_st_w | inst_ld_bu | inst_ld_hu
+                      | inst_jirl | inst_b | inst_bl | inst_beq | inst_bne | inst_blt
+                      | inst_bge | inst_bltu | inst_bgeu | inst_lu12i_w | inst_slti
+                      | inst_sltui | inst_andi | inst_ori | inst_xori | inst_sll_w
+                      | inst_srl_w | inst_sra_w | inst_pcaddu12i | inst_break | inst_syscall); // 指令不存在异常
+
+    assign id_syscall = inst_syscall;
+    assign id_break = inst_break; // 系统调用和断点异常
+    assign id_has_int = wb_has_int;
+	assign id_ertn_flush = inst_ertn;
 
     assign mul_signed = inst_mul_w | inst_mulh_w;
     assign mul_hres = inst_mulh_w | inst_mulh_wu;
@@ -411,6 +464,8 @@ module mycpu_top #
     assign alu_src1 = src1_is_pc  ? id_pc[31:0] : rj_value;
     assign alu_src2 = src2_is_imm ? imm : rkd_value;
 
+    /*------EX------*/
+
     alu u_alu(
             .alu_op     (ex_alu_op    ),
             .alu_src1   (ex_alu_src1  ),
@@ -454,30 +509,41 @@ module mycpu_top #
            ex_mul_enable ? mul_result :
            alu_result; // EX结果的MUX GATE
 
+    wire ex_ale; // 地址非对齐异常
+
+    assign ex_ale = ex_op_st_h & (EX_result[0]!=1'b0)
+           |	ex_op_st_w & (EX_result[1:0]!=2'b0)
+           |	ex_mem_word & (EX_result[1:0]!=2'b0)
+           |	ex_mem_half & (EX_result[0]!=1'b0);
+
     wire [3:0] mem_we;
     assign mem_we = ex_op_st_b ? (EX_result[1:0]==2'b00 ? 4'b0001 :
-                                   EX_result[1:0]==2'b01 ? 4'b0010 :
-                                   EX_result[1:0]==2'b10 ? 4'b0100 :
-                                   4'b1000) :
+                                  EX_result[1:0]==2'b01 ? 4'b0010 :
+                                  EX_result[1:0]==2'b10 ? 4'b0100 :
+                                  4'b1000) :
            ex_op_st_h ? (EX_result[1:0]==2'b00 ? 4'b0011 :
-                          4'b1100) :
+                         4'b1100) :
            {4{ex_op_st_w}};
 
-    assign data_sram_we    = mem_we & {4{valid}};
+    assign data_sram_we    = ~ex_ale & ~mem_pref_adef & ~mem_ex_ale & ~mem_id_ine & ~mem_id_break & ~mem_id_syscall
+           & ~wb_pref_adef & ~wb_ex_ale & ~wb_id_ine & wb_id_break & wb_id_syscall
+           & mem_we & {4{valid}}; // 如果其或者其后的流水段发生异常，则停止写ram
     assign data_sram_addr  = EX_result & 32'hFFFF_FFFC;
     assign data_sram_wdata = ex_op_st_b ? {4{ex_rkd_value[7:0]}} :
            ex_op_st_h ? {2{ex_rkd_value[15:0]}} :
            ex_rkd_value;
 
+    /*------MEM------*/
+
     wire [31:0] mem_out;
     assign mem_out =
            mem_mem_word ? data_sram_rdata :
            mem_mem_half ? (mem_EX_result[1:0] == 2'b00 ? {16'b0, data_sram_rdata[15:0]} :
-                          {16'b0, data_sram_rdata[31:16]}) :
+                           {16'b0, data_sram_rdata[31:16]}) :
            mem_mem_byte ? (mem_EX_result[1:0] == 2'b00 ? {24'b0, data_sram_rdata[7:0]}   :
-                          mem_EX_result[1:0] == 2'b01 ? {24'b0, data_sram_rdata[15:8]}  :
-                          mem_EX_result[1:0] == 2'b10 ? {24'b0, data_sram_rdata[23:16]} :
-                          {24'b0, data_sram_rdata[31:24]}) :
+                           mem_EX_result[1:0] == 2'b01 ? {24'b0, data_sram_rdata[15:8]}  :
+                           mem_EX_result[1:0] == 2'b10 ? {24'b0, data_sram_rdata[23:16]} :
+                           {24'b0, data_sram_rdata[31:24]}) :
            32'b0;
 
 
@@ -494,6 +560,30 @@ module mycpu_top #
            ) :
            mem_out;
 
+    /*------WB------*/
+
+    // CSR相关指令
+
+
+    // 异常信号处理
+    wire wb_has_exception;
+    wire [5:0] wb_ecode;
+    wire wb_esubcode;
+
+    assign wb_has_exception = wb_pref_adef | wb_ex_ale | wb_id_ine | wb_id_break | wb_id_syscall | wb_id_has_int;
+    assign wb_ecode = {6{wb_pref_adef}} & `ECODE_ADEF
+           | 6{{wb_ex_ale}} & `ECODE_ALE
+           | 6{{wb_id_ine}} & `ECODE_INE
+           | 6{{wb_id_break}} & `ECODE_BRK
+           | 6{{wb_id_syscall}} & `ECODE_SYS
+           | 6{{wb_id_has_int}} & `ECODE_INT;
+    assign wb_esubcode = wb_pref_adef & `ESUBCODE_ADEF; // TODO:ADEM暂未实现
+
+    wire [31:0] wb_ex_entry; // 传给IF
+    wire wb_has_int; // 传给ID
+    wire [31:0] wb_ertn_pc; // 传给IF
+
+    // 写回
     assign final_result = wb_res_from_mem ? wb_mem_result :
            wb_EX_result;
 
@@ -506,6 +596,8 @@ module mycpu_top #
     assign debug_wb_rf_we   = {4{(wb_pc == 32'h1bfffffc) ? 0 : rf_we}};
     assign debug_wb_rf_wnum  = wb_dest;
     assign debug_wb_rf_wdata = final_result;
+
+    /*-------PIPELINE------*/
 
     wire wb_allowin;
 
@@ -618,14 +710,17 @@ module mycpu_top #
         if (if_to_id_valid && id_allowin) begin
             id_reg[31:0] <= if_pc;
             id_reg[63:32] <= if_data_in; // data in = inst_sram_rdata
+            id_reg[64] <= pref_adef; // 取地址错异常标志
         end
     end
 
     wire [31:0] id_pc;
     wire [31:0] id_inst;
+    wire id_pref_adef;
 
     assign id_pc = id_reg[31:0];
     assign id_inst = id_reg[63:32];
+    assign id_pref_adef = id_reg[64];
 
     wire ex_allowin;
     wire ex_ready_go;
@@ -678,6 +773,13 @@ module mycpu_top #
             ex_reg[227] <= op_st_b;
             ex_reg[228] <= op_st_h;
             ex_reg[229] <= op_st_w;
+
+            ex_reg[230] <= id_pref_adef;
+            ex_reg[231] <= id_ine;
+            ex_reg[232] <= id_break;
+            ex_reg[233] <= id_syscall;
+            ex_reg[234] <= id_has_int;
+			ex_reg[235] <= id_ertn_flush;
         end
     end
 
@@ -687,6 +789,13 @@ module mycpu_top #
 
     wire [31:0] ex_pc;
     wire [31:0] ex_inst;
+    wire ex_pref_adef;
+    wire ex_id_ine;
+    wire ex_id_break;
+    wire ex_id_syscall;
+    wire ex_id_has_int;
+	wire ex_id_ertn_flush;
+
     wire [31:0] ex_alu_src1;
     wire [31:0] ex_alu_src2;
     wire [11:0] ex_alu_op;
@@ -749,6 +858,13 @@ module mycpu_top #
     assign ex_op_st_h = ex_reg[228];
     assign ex_op_st_w = ex_reg[229];
 
+    assign ex_pref_adef = ex_reg[230];
+    assign ex_id_ine = ex_reg[231];
+    assign ex_id_break = ex_reg[232];
+    assign ex_id_syscall = ex_reg[233];
+    assign ex_id_has_int = ex_reg[234];
+	assign ex_id_ertn_flush = ex_reg[235];
+
     // mem stage
     wire mem_allowin;
     wire mem_ready_go;
@@ -788,6 +904,14 @@ module mycpu_top #
             mem_reg[148] <= ex_op_st_b;
             mem_reg[149] <= ex_op_st_h;
             mem_reg[150] <= ex_op_st_w;
+
+            mem_reg[151] <= ex_pref_adef;
+            mem_reg[152] <= ex_ale;
+            mem_reg[153] <= ex_id_ine;
+            mem_reg[154] <= ex_id_break;
+            mem_reg[155] <= ex_id_syscall;
+            mem_reg[156] <= ex_id_has_int;
+			mem_reg[157] <= ex_id_ertn_flush;
         end
     end
 
@@ -813,6 +937,14 @@ module mycpu_top #
     wire mem_op_st_h;
     wire mem_op_st_w;
 
+    wire mem_pref_adef;
+    wire mem_ex_ale;
+    wire mem_id_ine;
+    wire mem_id_break;
+    wire mem_id_syscall;
+    wire mem_id_has_int;
+	wire mem_id_ertn_flush;
+
 
     assign mem_pc = mem_reg[31:0];
     assign mem_inst = mem_reg[63:32];
@@ -835,6 +967,14 @@ module mycpu_top #
     assign mem_op_st_b = mem_reg[148];
     assign mem_op_st_h = mem_reg[149];
     assign mem_op_st_w = mem_reg[150];
+
+    assign mem_pref_adef = mem_reg[151];
+    assign mem_ex_ale = mem_reg[152];
+    assign mem_id_ine = mem_reg[153];
+    assign mem_id_break = mem_reg[154];
+    assign mem_id_syscall = mem_reg[155];
+    assign mem_id_has_int = mem_reg[156];
+	assign mem_id_ertn_flush = mem_reg[157];
 
     // wb stage
     wire out_allow = 1;
@@ -870,7 +1010,15 @@ module mycpu_top #
             wb_reg[143] <= mem_mem_uext;
             wb_reg[144] <= mem_mem_iext;
 
-			wb_reg[176:145] <= mem_result;
+            wb_reg[176:145] <= mem_result;
+
+            wb_reg[177] <= mem_pref_adef;
+            wb_reg[178] <= mem_ex_ale;
+            wb_reg[179] <= mem_id_ine;
+            wb_reg[180] <= mem_id_break;
+            wb_reg[181] <= mem_id_syscall;
+            wb_reg[182] <= mem_id_has_int;
+			wb_reg[183] <= mem_id_ertn_flush;
         end
     end
     assign validout = wb_valid && wb_ready_go; // not defined
@@ -893,7 +1041,15 @@ module mycpu_top #
     wire wb_mem_uext;
     wire wb_mem_iext;
 
-	wire [31:0] wb_mem_result;
+    wire [31:0] wb_mem_result;
+
+    wire wb_pref_adef;
+    wire wb_ex_ale;
+    wire wb_id_ine;
+    wire wb_id_break;
+    wire wb_id_syscall;
+    wire wb_id_has_int;
+	wire wb_id_ertn_flush;
 
     assign wb_pc = wb_reg[31:0];
     assign wb_inst = wb_reg[63:32];
@@ -912,6 +1068,44 @@ module mycpu_top #
     assign wb_mem_uext = wb_reg[143];
     assign wb_mem_iext = wb_reg[144];
 
-	assign wb_mem_result = wb_reg[176:145];
+    assign wb_mem_result = wb_reg[176:145];
 
+    /*------中断信号------*/
+    assign wb_pref_adef = wb_reg[177];
+    assign wb_ex_ale = wb_reg[178];
+    assign wb_id_ine = wb_reg[179];
+    assign wb_id_break = wb_reg[180];
+    assign wb_id_syscall = wb_reg[181];
+    assign wb_id_has_int = wb_reg[182];
+	assign wb_ertn_flush = wb_reg[183];
+
+
+    csr_reg u_csr_reg(
+                // input
+                .clk	(clk),
+                .reset		(~resetn),
+                /***指令访问接口***/
+                // input
+                .csr_re		(wb_csr_re),
+                .csr_num	(wb_csr_num),
+                .csr_we		(wb_csr_we),
+                .csr_wmask	(wb_csr_mask),
+                .csr_wvalue	(wb_csr_wvalue),
+                // output
+                .csr_rvalue	(wb_csr_rvalue),
+                /***硬件交互接口***/
+                // input
+                .wb_pc(wb_pc),
+                .wb_ex(wb_has_exception),
+                .wb_ecode(wb_ecode),
+                .wb_esubcode(wb_esubcode),
+                .ertn_flush(wb_ertn_flush),
+                .hw_int_in(hw_int_in),
+                .ipi_int_in(ipi_int_in),
+                .coreid_in(coreid_in),
+                // output
+                .ex_entry(wb_ex_entry), // 送往取指的异常处理入口地址
+                .has_int(wb_has_int), // 送往ID的中断有效信号
+                .ertn_pc(wb_ertn_pc) // 送往取指的ertn返回的指令地址
+            );
 endmodule
