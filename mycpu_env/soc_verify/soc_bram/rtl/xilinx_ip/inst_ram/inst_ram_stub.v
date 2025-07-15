@@ -1,10 +1,10 @@
 // Copyright 1986-2019 Xilinx, Inc. All Rights Reserved.
 // --------------------------------------------------------------------------------
 // Tool Version: Vivado v.2019.2 (win64) Build 2708876 Wed Nov  6 21:40:23 MST 2019
-// Date        : Sun Jul  6 13:20:36 2025
+// Date        : Mon Jul 14 00:20:33 2025
 // Host        : xiaochou running 64-bit major release  (build 9200)
-// Command     : write_verilog -force -mode synth_stub
-//               E:/loongson/cdp_ede_local/mycpu_env/soc_verify/soc_bram/rtl/xilinx_ip/inst_ram/inst_ram_stub.v
+// Command     : write_verilog -force -mode synth_stub -rename_top inst_ram -prefix
+//               inst_ram_ inst_ram_stub.v
 // Design      : inst_ram
 // Purpose     : Stub declaration of top-level module interface
 // Device      : xc7a200tfbg676-1

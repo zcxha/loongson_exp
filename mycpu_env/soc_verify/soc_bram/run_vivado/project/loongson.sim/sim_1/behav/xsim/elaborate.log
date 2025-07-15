@@ -14,6 +14,8 @@ Compiling module xil_defaultlib.decoder_2_4
 Compiling module xil_defaultlib.decoder_5_32
 Compiling module xil_defaultlib.regfile
 Compiling module xil_defaultlib.alu
+Compiling module xil_defaultlib.mul_ip
+Compiling module xil_defaultlib.div
 Compiling module xil_defaultlib.mycpu_top
 Compiling module blk_mem_gen_v8_4_4.blk_mem_gen_v8_4_4_output_stage(...
 Compiling module blk_mem_gen_v8_4_4.blk_mem_gen_v8_4_4_output_stage(...

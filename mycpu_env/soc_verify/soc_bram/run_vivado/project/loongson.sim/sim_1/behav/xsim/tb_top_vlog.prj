@@ -11,6 +11,8 @@ verilog xil_defaultlib  --include "../../../../../../rtl/xilinx_ip/clk_pll" \
 "../../../../../../../../myCPU/decoder_4_16.v" \
 "../../../../../../../../myCPU/decoder_5_32.v" \
 "../../../../../../../../myCPU/decoder_6_64.v" \
+"../../../../../../../../myCPU/div.v" \
+"../../../../../../../../myCPU/mul_ip.v" \
 "../../../../../../../../myCPU/mycpu_top.v" \
 "../../../../../../../../myCPU/regfile.v" \
 "../../../../../../rtl/soc_lite_top.v" \
