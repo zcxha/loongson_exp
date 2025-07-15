@@ -376,6 +376,9 @@ module mycpu_top #
                 .wdata  (rf_wdata )
             );
 
+    wire op_br_compare;
+    wire br_valid;
+    assign op_br_compare = inst_beq | inst_bne | inst_blt | inst_bge | inst_bltu | inst_bgeu;
     assign rj_value  = (ex_valid && rf_raddr1 == ex_dest && ex_ex_forward)? EX_result :
            (mem_valid && rf_raddr1 == mem_dest && mem_ex_forward) ? mem_EX_result: // mem段之间是没有优先级的 但是流水段之间有。
            (mem_valid && rf_raddr1 == mem_dest && mem_mem_forward)? mem_result:
@@ -386,6 +389,8 @@ module mycpu_top #
            (mem_valid && rf_raddr2 == mem_dest && mem_mem_forward)? mem_result:
            (wb_valid && rf_raddr2 == wb_dest && (wb_wb_forward || wb_ex_forward || wb_mem_forward))? final_result:
            rf_rdata2;
+
+    assign br_valid = ~(op_br_compare && ex_valid && ex_ex_forward && (rf_raddr1 == ex_dest || rf_raddr2 == ex_dest ));
 
     assign rj_eq_rd = (rj_value == rkd_value);
     assign rj_less_rd = ($signed(rj_value) < $signed(rkd_value));
@@ -399,7 +404,7 @@ module mycpu_top #
                           || inst_jirl
                           || inst_bl
                           || inst_b
-                      ) && valid && (br_target != if_pc);
+                      ) && valid && (br_target != if_pc) && br_valid;
     assign br_target = (inst_beq || inst_bne || inst_blt || inst_bge || inst_bltu || inst_bgeu || inst_bl || inst_b) ? (id_pc + br_offs) :
            /*inst_jirl*/ (rj_value + jirl_offs);
 
@@ -593,7 +598,8 @@ module mycpu_top #
 
     assign id_ready_go =~(
                ((ex_valid & ex_mem_forward & (ex_dest == rf_raddr1 || ex_dest == rf_raddr2)) |  // load-use 阻塞一次 block ram再阻塞一次 一共两次阻塞
-                (mem_valid & mem_mem_forward & (mem_dest == rf_raddr1 || mem_dest == rf_raddr2)))
+                (mem_valid & mem_mem_forward & (mem_dest == rf_raddr1 || mem_dest == rf_raddr2)) |
+                (op_br_compare & ex_valid & ex_ex_forward & (ex_dest == rf_raddr1 || ex_dest == rf_raddr2))) // 遇到数据冲突的branch指令阻塞一次取mem段alures用于去除关键路径
                & id_need_forward_data
            ); // todo
     assign id_allowin = !id_valid || id_ready_go && ex_allowin;
