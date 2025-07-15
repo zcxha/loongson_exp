@@ -455,46 +455,46 @@ module mycpu_top #
            alu_result; // EX结果的MUX GATE
 
     wire [3:0] mem_we;
-    assign mem_we = mem_op_st_b ? (mem_EX_result[1:0]==2'b00 ? 4'b0001 :
-                                   mem_EX_result[1:0]==2'b01 ? 4'b0010 :
-                                   mem_EX_result[1:0]==2'b10 ? 4'b0100 :
+    assign mem_we = ex_op_st_b ? (EX_result[1:0]==2'b00 ? 4'b0001 :
+                                   EX_result[1:0]==2'b01 ? 4'b0010 :
+                                   EX_result[1:0]==2'b10 ? 4'b0100 :
                                    4'b1000) :
-           mem_op_st_h ? (mem_EX_result[1:0]==2'b00 ? 4'b0011 :
+           ex_op_st_h ? (EX_result[1:0]==2'b00 ? 4'b0011 :
                           4'b1100) :
-           {4{mem_op_st_w}};
+           {4{ex_op_st_w}};
 
     assign data_sram_we    = mem_we & {4{valid}};
-    assign data_sram_addr  = mem_EX_result & 32'hFFFF_FFFC;
-    assign data_sram_wdata = mem_op_st_b ? {4{mem_rkd_value[7:0]}} :
-           mem_op_st_h ? {2{mem_rkd_value[15:0]}} :
-           mem_rkd_value;
+    assign data_sram_addr  = EX_result & 32'hFFFF_FFFC;
+    assign data_sram_wdata = ex_op_st_b ? {4{ex_rkd_value[7:0]}} :
+           ex_op_st_h ? {2{ex_rkd_value[15:0]}} :
+           ex_rkd_value;
 
     wire [31:0] mem_out;
     assign mem_out =
-           wb_mem_word ? data_sram_rdata :
-           wb_mem_half ? (wb_EX_result[1:0] == 2'b00 ? {16'b0, data_sram_rdata[15:0]} :
+           mem_mem_word ? data_sram_rdata :
+           mem_mem_half ? (mem_EX_result[1:0] == 2'b00 ? {16'b0, data_sram_rdata[15:0]} :
                           {16'b0, data_sram_rdata[31:16]}) :
-           wb_mem_byte ? (wb_EX_result[1:0] == 2'b00 ? {24'b0, data_sram_rdata[7:0]}   :
-                          wb_EX_result[1:0] == 2'b01 ? {24'b0, data_sram_rdata[15:8]}  :
-                          wb_EX_result[1:0] == 2'b10 ? {24'b0, data_sram_rdata[23:16]} :
+           mem_mem_byte ? (mem_EX_result[1:0] == 2'b00 ? {24'b0, data_sram_rdata[7:0]}   :
+                          mem_EX_result[1:0] == 2'b01 ? {24'b0, data_sram_rdata[15:8]}  :
+                          mem_EX_result[1:0] == 2'b10 ? {24'b0, data_sram_rdata[23:16]} :
                           {24'b0, data_sram_rdata[31:24]}) :
            32'b0;
 
 
     assign mem_result =
-           wb_mem_uext ? (
-               wb_mem_half ? {16'b0, mem_out[15:0]} :
-               wb_mem_byte ? {24'b0, mem_out[7:0]} :
+           mem_mem_uext ? (
+               mem_mem_half ? {16'b0, mem_out[15:0]} :
+               mem_mem_byte ? {24'b0, mem_out[7:0]} :
                mem_out
            ) :
-           wb_mem_iext ? (
-               wb_mem_half ? {{16{mem_out[15]}}, mem_out[15:0]} :
-               wb_mem_byte ? {{24{mem_out[7]}}, mem_out[7:0]} :
+           mem_mem_iext ? (
+               mem_mem_half ? {{16{mem_out[15]}}, mem_out[15:0]} :
+               mem_mem_byte ? {{24{mem_out[7]}}, mem_out[7:0]} :
                mem_out
            ) :
            mem_out;
 
-    assign final_result = wb_res_from_mem ? mem_result :
+    assign final_result = wb_res_from_mem ? wb_mem_result :
            wb_EX_result;
 
     assign rf_we    = wb_gr_we && valid;
@@ -597,8 +597,7 @@ module mycpu_top #
     assign id_need_forward_data = rjk_dest_inst | rj_dest_inst | rjd_dest_inst; // 如lu12i不需要forward则不需要load-use阻塞
 
     assign id_ready_go =~(
-               ((ex_valid & ex_mem_forward & (ex_dest == rf_raddr1 || ex_dest == rf_raddr2)) |  // load-use 阻塞一次 block ram再阻塞一次 一共两次阻塞
-                (mem_valid & mem_mem_forward & (mem_dest == rf_raddr1 || mem_dest == rf_raddr2)) |
+               ((ex_valid & ex_mem_forward & (ex_dest == rf_raddr1 || ex_dest == rf_raddr2)) |  // load-use 阻塞一次
                 (op_br_compare & ex_valid & ex_ex_forward & (ex_dest == rf_raddr1 || ex_dest == rf_raddr2))) // 遇到数据冲突的branch指令阻塞一次取mem段alures用于去除关键路径
                & id_need_forward_data
            ); // todo
@@ -870,6 +869,8 @@ module mycpu_top #
             wb_reg[142] <= mem_mem_byte;
             wb_reg[143] <= mem_mem_uext;
             wb_reg[144] <= mem_mem_iext;
+
+			wb_reg[176:145] <= mem_result;
         end
     end
     assign validout = wb_valid && wb_ready_go; // not defined
@@ -892,6 +893,8 @@ module mycpu_top #
     wire wb_mem_uext;
     wire wb_mem_iext;
 
+	wire [31:0] wb_mem_result;
+
     assign wb_pc = wb_reg[31:0];
     assign wb_inst = wb_reg[63:32];
     assign wb_gr_we = wb_reg[64] & wb_valid;
@@ -908,5 +911,7 @@ module mycpu_top #
     assign wb_mem_byte = wb_reg[142];
     assign wb_mem_uext = wb_reg[143];
     assign wb_mem_iext = wb_reg[144];
+
+	assign wb_mem_result = wb_reg[176:145];
 
 endmodule
