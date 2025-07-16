@@ -4,17 +4,18 @@ module csr_reg(
         input wire reset,
         /***指令访问接口***/
         input wire csr_re, // 读使能
-        input wire csr_num, // 寄存器号
+        input wire [13:0] csr_num, // 寄存器号
         input wire csr_we, // 写使能
         input wire [31:0] csr_wmask, // 写掩码
         input wire [31:0] csr_wvalue, // 写数据
-        output wire csr_rvalue, // 寄存器读返回值
+        output wire [31:0] csr_rvalue, // 寄存器读返回值
 
         /***硬件交互接口***/
         input wire [31:0] wb_pc, // wb段pc
         input wire wb_ex, // wb段异常触发信号
         input wire [5:0] wb_ecode, // wb段ecode
         input wire wb_esubcode, // wb段esubcode
+		input wire [31:0] wb_vaddr, // wb段异常访问地址
 
         input wire ertn_flush, // wb段ertn执行有效信号
 
@@ -62,7 +63,7 @@ module csr_reg(
         end
         else if (ertn_flush) begin
             csr_crmd_plv <= csr_prmd_pplv;
-            csr_crmd_ie <= csr_prmd_ie;
+            csr_crmd_ie <= csr_prmd_pie;
         end
         else if (csr_we && csr_num==`CSR_CRMD) begin
             csr_crmd_plv <= csr_wmask[`CSR_CRMD_PLV]&csr_wvalue[`CSR_CRMD_PLV]
@@ -79,13 +80,13 @@ module csr_reg(
     always @(posedge clk) begin
         if (wb_ex) begin
             csr_prmd_pplv <= csr_crmd_plv;
-            csr_prmd_ie <= csr_crmd_ie;
+            csr_prmd_pie <= csr_crmd_ie;
         end
         else if (csr_we && csr_num==`CSR_PRMD) begin
             csr_prmd_pplv <= csr_wmask[`CSR_PRMD_PPLV]&csr_wvalue[`CSR_PRMD_PPLV]
                           | ~csr_wmask[`CSR_PRMD_PPLV]&csr_prmd_pplv;
-            csr_prmd_ie <= csr_wmask[`CSR_PRMD_IE]&csr_wvalue[`CSR_PRMD_IE]
-                        | ~csr_wmask[`CSR_PRMD_IE]&csr_prmd_ie;
+            csr_prmd_pie <= csr_wmask[`CSR_PRMD_PIE]&csr_wvalue[`CSR_PRMD_PIE]
+                        | ~csr_wmask[`CSR_PRMD_PIE]&csr_prmd_pie;
         end
     end
 
@@ -263,7 +264,7 @@ module csr_reg(
     wire [31:0] csr_crmd_rvalue = {23'b0, csr_crmd_datm, csr_crmd_datf, csr_crmd_pg, csr_crmd_da, csr_crmd_ie, csr_crmd_plv};
     wire [31:0] csr_prmd_rvalue = {29'b0, csr_prmd_pie, csr_prmd_pplv};
     wire [31:0] csr_ecfg_rvalue = {19'b0, csr_ecfg_lie};
-    wire [31:0] csr_estat_rvalue = {1'b0, csr_estat_esubcode, csr_estat_ecode, 2'b0, csr_estsat_is};
+    wire [31:0] csr_estat_rvalue = {1'b0, csr_estat_esubcode, csr_estat_ecode, 3'b0, csr_estat_is};
     wire [31:0] csr_era_rvalue = csr_era_pc;
     wire [31:0] csr_badv_rvalue = csr_badv_vaddr;
     wire [31:0] csr_eentry_rvalue = {csr_eentry_va, 6'b0};
