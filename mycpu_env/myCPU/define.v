@@ -23,7 +23,7 @@
 `define CSR_ESTAT 5
 `define CSR_ESTAT_IS10 1:0
 
-`define CSR_TICLR_CLR 11
+`define CSR_TICLR_CLR 0 // TICLR 0 位（CLR位）写 1
 
 `define ECODE_INT 6'h0
 `define ECODE_PIL 6'h1
@@ -107,7 +107,7 @@
 
 `define CSR_TCFG_EN 0
 `define CSR_TCFG_PERIOD 1
-`define CSR_TCFG_INITV 31:0 //
+`define CSR_TCFG_INITV 31:2 //
 
 
 `define CSR_TVAL 66

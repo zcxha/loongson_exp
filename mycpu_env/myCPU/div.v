@@ -39,14 +39,16 @@ module div(
             try_reg = 33'b0;
         end
 
-        if (div && !shift_run && !complete) begin
+        if (div && !shift_run && !complete) begin // 置移位器为1
             RQ_reg <= {32'b0,src1};
             y_reg <= src2;
             src1_sign <= div_signed & x[31];
             src2_sign <= div_signed & y[31];
             shift_run <= 1'b1;
             count <= 6'b0;
-        end
+		end else if (!div && shift_run) begin // div在移位器完成除法之前就置0即清除移位器状态
+			shift_run <= 1'b0;
+		end
 
 		// 迭代器
         if (div && shift_run && !complete) begin
