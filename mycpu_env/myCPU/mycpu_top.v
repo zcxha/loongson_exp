@@ -233,18 +233,25 @@ module mycpu_top #
            seq_pc;
     assign pref_adef	= ((nextpc & 2'b11) != 2'b00);
 
+    reg waiting_for_inst;
+
     always @(posedge clk) begin
         if (reset) begin
-			inst_sram_req <= 0;
+			waiting_for_inst <= 0;
+            inst_sram_req <= 0;
             pc <= 32'h1bfffffc;     //trick: to make nextpc be 0x1c000000 during reset
         end
-        else if (if_allowin && inst_sram_req == 0 || br_taken_cancel) begin
-			inst_sram_req = 1;
+        if ((if_allowin && inst_sram_req == 0 || br_taken_cancel) && !waiting_for_inst) begin
+            inst_sram_req <= 1;
             pc <= nextpc;
         end
-		else if (inst_sram_addr_ok) begin
-			inst_sram_req = 0;
-		end
+        else if (inst_sram_addr_ok && inst_sram_req) begin
+            inst_sram_req <= 0;
+            waiting_for_inst <= 1;
+        end
+        else if (inst_sram_data_ok && waiting_for_inst) begin
+            waiting_for_inst <= 0;
+        end
     end
 
     assign inst_sram_wr = 0;
@@ -253,7 +260,7 @@ module mycpu_top #
     assign inst_sram_addr  = pref_adef ? 32'h1c000000 : pc; // 发生取指地址错时将PC置默认值
     assign inst_sram_wdata = 32'b0;
 
-	/*------IF------*/
+    /*------IF------*/
 
     reg [63:0] if_buffer;
     reg buffer_valid;
@@ -615,14 +622,28 @@ module mycpu_top #
 
     assign data_sram_req = ex_mem_op && mem_allowin;
     assign data_sram_wr = ex_op_st_b | ex_op_st_h | ex_op_st_w;
-    assign data_sram_size = {{2{ex_op_st_b & 0}} | {0,{ex_op_st_h & 1}} | {2{ex_op_st_w}} | 2'b10} & {2{data_sram_wr}}
-           | ~data_sram_wr & ({2{ex_mem_byte}} & 2'b00 | {2{ex_mem_half}} & 2'b01 | {2{ex_mem_word}} & 2'b10);
+    assign data_sram_size = ex_op_st_b || ex_mem_byte ? 2'b00 :
+							ex_op_st_h || ex_mem_half ? 2'b01 :
+							2'b10;
     assign data_sram_wstrb    = {4{~mem_has_exception & ~wb_has_exception & ~ex_has_exception}}
            & mem_we & {4{valid}}; // 如果其或者其后的流水段发生异常，则停止写ram
     assign data_sram_addr  = EX_result & 32'hFFFF_FFFC;
     assign data_sram_wdata = ex_op_st_b ? {4{ex_rkd_value[7:0]}} :
            ex_op_st_h ? {2{ex_rkd_value[15:0]}} :
            ex_rkd_value;
+
+	reg waiting_for_data;
+	always @(posedge clk) begin
+		if (reset ) begin
+			waiting_for_data <= 0;
+		end
+		if (data_sram_addr_ok && data_sram_req) begin
+			waiting_for_data <= 1;
+		end
+		else if (waiting_for_data && data_sram_data_ok) begin
+			waiting_for_data <= 0;
+		end
+	end
 
     /*------MEM------*/
 
@@ -761,7 +782,7 @@ module mycpu_top #
     wire if_allowin;
     wire if_ready_go;
     wire if_to_id_valid;
-    assign if_ready_go = inst_sram_data_ok || buffer_valid; // todo
+    assign if_ready_go = !waiting_for_inst || buffer_valid; // todo
     assign if_allowin = !if_valid || if_ready_go && id_allowin; // 当前stage无效 或者 准备走并且下一个允许进  则当前可以进
     assign if_to_id_valid = if_valid && if_ready_go; // 当前stage无效或不能走则下一个stage不更新
     always @(posedge clk) begin
@@ -865,7 +886,7 @@ module mycpu_top #
             end
         end
 
-        if (if_to_id_valid && id_allowin && ~buffer_valid) begin
+        if (if_to_id_valid && id_allowin) begin
             id_reg[31:0] <= if_pc;
             id_reg[63:32] <= if_data_in; // data in = inst_sram_rdata
             id_reg[64] <= pref_adef; // 取地址错异常标志
@@ -1067,8 +1088,7 @@ module mycpu_top #
     wire mem_ready_go;
     wire mem_to_wb_valid;
 
-    assign mem_ready_go = mem_mem_op ? data_sram_data_ok :
-           1; // todo
+    assign mem_ready_go = !waiting_for_data;	
     assign mem_allowin = !mem_valid || mem_ready_go && wb_allowin;
     assign mem_to_wb_valid = mem_valid && mem_ready_go;
     always @(posedge clk) begin
@@ -1076,7 +1096,7 @@ module mycpu_top #
             mem_valid <= 1'b0;
             mem_reg <= 500'b0;
         end
-        else if (wb_id_ertn_flush | wb_has_exception) begin
+        else if (wb_id_ertn_flush | wb_has_exception ) begin
             mem_valid <= 1'b0;
         end
         else if (mem_allowin) begin
@@ -1212,7 +1232,7 @@ module mycpu_top #
             wb_valid <= 1'b0;
             wb_reg <= 500'b0;
         end
-        else if (wb_id_ertn_flush | wb_has_exception) begin
+        else if (wb_id_ertn_flush || wb_has_exception || wb_pc == mem_pc) begin
             wb_valid <= 1'b0;
         end
         else if (wb_allowin) begin
