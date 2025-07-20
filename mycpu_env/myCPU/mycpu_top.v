@@ -6,17 +6,25 @@ module mycpu_top #
     (
         input  wire        clk,
         input  wire        resetn,
-        // inst sram interface
-        output wire		   inst_sram_en,
-        output wire [3:0]  inst_sram_we,
-        output wire [31:0] inst_sram_addr,
-        output wire [31:0] inst_sram_wdata,
+        // inst sram interface bus
+        output reg		   inst_sram_req, // 请求信号 1表示有读写请求，0表示无读写请求
+        output wire        inst_sram_wr, // 为1表示该次是写请求，0表示是读请求
+        output wire	[1:0]  inst_sram_size, // 请求传输字节数 0:1字节 1:2字节 2:4字节
+        output wire [31:0] inst_sram_addr, //
+        output wire [3:0]  inst_sram_wstrb, // 该次字节写使能
+        output wire [31:0] inst_sram_wdata, //
+        input  wire		   inst_sram_addr_ok, // 该次请求地址传输OK 读：地址被接收 写：地址和数据被接收
+        input  wire		   inst_sram_data_ok, // 该次请求的数据传输OK 读：数据返回 写：数据写入完成
         input  wire [31:0] inst_sram_rdata,
-        // data sram interface
-        output wire		   data_sram_en,
-        output wire [3:0]  data_sram_we,
+        // data sram interface bus
+        output wire		   data_sram_req,
+        output wire        data_sram_wr,
+        output wire [1:0]  data_sram_size,
         output wire [31:0] data_sram_addr,
+        output wire [3:0]  data_sram_wstrb,
         output wire [31:0] data_sram_wdata,
+        input  wire        data_sram_addr_ok,
+        input  wire        data_sram_data_ok,
         input  wire [31:0] data_sram_rdata,
         // trace debug interface
         output wire [31:0] debug_wb_pc,
@@ -24,8 +32,6 @@ module mycpu_top #
         output wire [ 4:0] debug_wb_rf_wnum,
         output wire [31:0] debug_wb_rf_wdata
     );
-    assign data_sram_en = 1;
-    assign inst_sram_en = 1;
 
     reg         reset;
     always @(posedge clk) reset <= ~resetn;
@@ -216,32 +222,58 @@ module mycpu_top #
     wire [31:0] final_result;
 
     /*------pre-IF------*/
+    // assign inst_sram_req = (op_br_compare && ex_valid ? br_valid : 1) && if_allowin && resetn;
 
     assign seq_pc       = ~if_allowin ? pc : pc + 32'h4;
     assign nextpc = (wb_valid && (wb_has_exception || wb_id_ertn_flush)) ?
            ( {32{wb_has_exception}} & wb_ex_entry |
              {32{wb_id_ertn_flush}}   & wb_ertn_pc ) :
-           (br_taken && id_valid) ?
+           (br_taken_cancel) ?
            br_target :
            seq_pc;
     assign pref_adef	= ((nextpc & 2'b11) != 2'b00);
 
     always @(posedge clk) begin
         if (reset) begin
+			inst_sram_req <= 0;
             pc <= 32'h1bfffffc;     //trick: to make nextpc be 0x1c000000 during reset
         end
-        else begin
+        else if (if_allowin && inst_sram_req == 0 || br_taken_cancel) begin
+			inst_sram_req = 1;
             pc <= nextpc;
+        end
+		else if (inst_sram_addr_ok) begin
+			inst_sram_req = 0;
+		end
+    end
+
+    assign inst_sram_wr = 0;
+    assign inst_sram_size = 2'h2;
+    assign inst_sram_wstrb    = 4'b0;
+    assign inst_sram_addr  = pref_adef ? 32'h1c000000 : pc; // 发生取指地址错时将PC置默认值
+    assign inst_sram_wdata = 32'b0;
+
+	/*------IF------*/
+
+    reg [63:0] if_buffer;
+    reg buffer_valid;
+    always @(posedge clk) begin
+        if (reset) begin
+            if_buffer <= 64'b0;
+            buffer_valid <= 0;
+        end
+        else if (!id_allowin && if_ready_go) begin
+            if_buffer <= {pref_adef,if_data_in,if_pc};
+            buffer_valid <= 1'b1;
+        end
+        else begin
+            buffer_valid <= 0;
         end
     end
 
-    assign inst_sram_we    = 4'b0;
-    assign inst_sram_addr  = pref_adef ? 32'h1c000000 : nextpc; // 发生取指地址错时将PC置默认值
-    assign inst_sram_wdata = 32'b0;
-    assign inst            = id_inst;
-
     // ID 段把所有标志都生成
     /*------ID------*/
+    assign inst            = id_inst;
 
     assign op_31_26  = inst[31:26];
     assign op_25_22  = inst[25:22];
@@ -451,7 +483,7 @@ module mycpu_top #
     assign gr_we         = ~inst_st_b & ~inst_st_h & ~inst_st_w & ~inst_beq & ~inst_bne & ~inst_blt & ~inst_bge & ~inst_bltu & ~inst_bgeu & ~inst_b;
     assign dest          = dst_is_r1 ? 5'd1 : dst_is_rj ? rj : rd;
 
-
+    assign mem_op = inst_ld_w | inst_ld_h | inst_ld_b | inst_ld_bu | inst_ld_hu | inst_st_b | inst_st_w | inst_st_h;
 
     assign mem_word		= inst_ld_w;
     assign mem_half		= inst_ld_h | inst_ld_hu;
@@ -553,7 +585,7 @@ module mycpu_top #
     wire [31:0] timer_value;
     timer u_timer(
               .clk	(clk	),
-              .reset	(~resetn),
+              .reset	(reset),
               .timer_op	(ex_timer_op),
               .rvalue	(timer_value)
           );
@@ -581,7 +613,11 @@ module mycpu_top #
     assign mem_has_exception = mem_valid & (mem_pref_adef | mem_ex_ale | mem_id_ine | mem_id_break | mem_id_syscall | mem_id_has_int | mem_id_ertn_flush);
     assign ex_has_exception = ex_valid & (ex_ale | ex_pref_adef | ex_id_ine | ex_id_break | ex_id_syscall | ex_id_has_int | ex_id_ertn_flush);
 
-    assign data_sram_we    = {4{~mem_has_exception & ~wb_has_exception & ~ex_has_exception}}
+    assign data_sram_req = ex_mem_op && mem_allowin;
+    assign data_sram_wr = ex_op_st_b | ex_op_st_h | ex_op_st_w;
+    assign data_sram_size = {{2{ex_op_st_b & 0}} | {0,{ex_op_st_h & 1}} | {2{ex_op_st_w}} | 2'b10} & {2{data_sram_wr}}
+           | ~data_sram_wr & ({2{ex_mem_byte}} & 2'b00 | {2{ex_mem_half}} & 2'b01 | {2{ex_mem_word}} & 2'b10);
+    assign data_sram_wstrb    = {4{~mem_has_exception & ~wb_has_exception & ~ex_has_exception}}
            & mem_we & {4{valid}}; // 如果其或者其后的流水段发生异常，则停止写ram
     assign data_sram_addr  = EX_result & 32'hFFFF_FFFC;
     assign data_sram_wdata = ex_op_st_b ? {4{ex_rkd_value[7:0]}} :
@@ -649,7 +685,7 @@ module mycpu_top #
     csr_reg u_csr_reg(
                 // input
                 .clk	(clk),
-                .reset		(~resetn),
+                .reset		(reset),
                 /***指令访问接口***/
                 // input
                 .csr_re		(1),
@@ -710,36 +746,43 @@ module mycpu_top #
 
     wire br_taken_cancel = br_taken & id_valid; // todo
 
-    wire [31:0] data_in;
+    // pre-IF stage
     wire validin;
-    assign data_in = inst_sram_rdata;
-    assign validin = ~(wb_id_ertn_flush | wb_has_exception);
+    wire pre_if_ready_go;
+    wire to_fs_valid;
+    assign to_fs_valid = inst_sram_req && inst_sram_addr_ok;
+    assign pre_if_ready_go = to_fs_valid;
+    assign validin = ~(wb_id_ertn_flush | wb_has_exception) & pre_if_ready_go ;
 
     // if stage
+    wire [31:0] data_in;
+    assign data_in = inst_sram_rdata;
+
     wire if_allowin;
     wire if_ready_go;
     wire if_to_id_valid;
-    assign if_ready_go = 1; // todo
-    assign if_allowin = !if_valid || if_ready_go && id_allowin;
-    assign if_to_id_valid = if_valid && if_ready_go;
+    assign if_ready_go = inst_sram_data_ok || buffer_valid; // todo
+    assign if_allowin = !if_valid || if_ready_go && id_allowin; // 当前stage无效 或者 准备走并且下一个允许进  则当前可以进
+    assign if_to_id_valid = if_valid && if_ready_go; // 当前stage无效或不能走则下一个stage不更新
     always @(posedge clk) begin
         if (reset) begin
             if_valid <= 1'b0;
             if_reg <= 500'b0;
         end
-        else if (wb_id_ertn_flush | wb_has_exception) begin
-            if_valid <= 1'b0;
-        end
-        else if (br_taken_cancel) begin
-            if_valid <= 1'b0;
-        end
         else if (if_allowin) begin
-            if_valid <= validin;
+            if ((wb_id_ertn_flush || wb_has_exception) && to_fs_valid) begin
+                if_valid <= 1'b0;
+            end
+            else if (br_taken_cancel) begin
+                if_valid <= 1'b0;
+            end
+            else begin
+                if_valid <= validin;
+            end
         end
 
         if (validin && if_allowin) begin
             if_reg[31:0] <= pc;
-            if_reg[63:32] <= data_in;
         end
     end
 
@@ -747,7 +790,7 @@ module mycpu_top #
     wire [31:0] if_data_in;
 
     assign if_pc = if_reg[31:0];
-    assign if_data_in = if_reg[63:32];
+    assign if_data_in = inst_sram_rdata;
 
     // id stage
 
@@ -810,20 +853,25 @@ module mycpu_top #
             id_valid <= 1'b0;
             id_reg <= 500'b0;
         end
-        else if (wb_id_ertn_flush | wb_has_exception) begin
-            id_valid <= 1'b0;
-        end
-        else if (br_taken_cancel) begin
-            id_valid <= 1'b0; // 控制相关
-        end
         else if (id_allowin) begin
-            id_valid <= if_to_id_valid;
+            if (wb_id_ertn_flush | wb_has_exception) begin
+                id_valid <= 1'b0;
+            end
+            else if (br_taken_cancel) begin
+                id_valid <= 1'b0; // 控制相关
+            end
+            else begin
+                id_valid <= if_to_id_valid;
+            end
         end
 
-        if (if_to_id_valid && id_allowin) begin
+        if (if_to_id_valid && id_allowin && ~buffer_valid) begin
             id_reg[31:0] <= if_pc;
             id_reg[63:32] <= if_data_in; // data in = inst_sram_rdata
             id_reg[64] <= pref_adef; // 取地址错异常标志
+        end
+        else if (if_to_id_valid && id_allowin && buffer_valid) begin
+            id_reg[64:0] <= if_buffer;
         end
     end
 
@@ -840,7 +888,9 @@ module mycpu_top #
     wire ex_to_mem_valid;
 
     // ex stage
-    assign ex_ready_go = ~(ex_div_enable & ~div_complete); // todo
+    assign ex_ready_go = ex_div_enable ? div_complete :
+           ex_mem_op ? data_sram_addr_ok :
+           1; // todo
     assign ex_allowin = !ex_valid || ex_ready_go && mem_allowin;
     assign ex_to_mem_valid = ex_valid && ex_ready_go;
     always @(posedge clk) begin
@@ -905,6 +955,7 @@ module mycpu_top #
 
             ex_reg[316] <= res_from_timer;
             ex_reg[317] <= timer_op;
+            ex_reg[318] <= mem_op;
 
         end
     end
@@ -958,6 +1009,8 @@ module mycpu_top #
     wire ex_mem_forward;
     wire ex_wb_forward;
 
+    wire ex_mem_op;
+
     assign ex_mul_signed = ex_reg[215];
     assign ex_mul_hres = ex_reg[216];
     assign ex_mul_enable = ex_reg[217];
@@ -1007,13 +1060,15 @@ module mycpu_top #
 
     assign ex_res_from_timer = ex_reg[316];
     assign ex_timer_op = ex_reg[317];
+    assign ex_mem_op = ex_reg[318];
 
     // mem stage
     wire mem_allowin;
     wire mem_ready_go;
     wire mem_to_wb_valid;
 
-    assign mem_ready_go = 1; // todo
+    assign mem_ready_go = mem_mem_op ? data_sram_data_ok :
+           1; // todo
     assign mem_allowin = !mem_valid || mem_ready_go && wb_allowin;
     assign mem_to_wb_valid = mem_valid && mem_ready_go;
     always @(posedge clk) begin
@@ -1064,6 +1119,7 @@ module mycpu_top #
             mem_reg[204] <= ex_csr_we;
             mem_reg[236:205] <= ex_csr_wvalue;
             mem_reg[237] <= ex_inst_csr;
+            mem_reg[238] <= ex_mem_op;
         end
     end
 
@@ -1103,6 +1159,8 @@ module mycpu_top #
     wire [31:0] mem_csr_wvalue;
     wire mem_inst_csr;
 
+    wire mem_mem_op;
+
 
     assign mem_pc = mem_reg[31:0];
     assign mem_inst = mem_reg[63:32];
@@ -1139,6 +1197,8 @@ module mycpu_top #
     assign mem_csr_we = mem_reg[204];
     assign mem_csr_wvalue = mem_reg[236:205];
     assign mem_inst_csr = mem_reg[237];
+
+    assign mem_mem_op = mem_reg[238];
 
     // wb stage
     wire out_allow = 1;
