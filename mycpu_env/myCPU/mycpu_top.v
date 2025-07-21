@@ -17,7 +17,7 @@ module mycpu_top #
         input  wire		   inst_sram_data_ok, // 该次请求的数据传输OK 读：数据返回 写：数据写入完成
         input  wire [31:0] inst_sram_rdata,
         // data sram interface bus
-        output wire		   data_sram_req,
+        output reg		   data_sram_req,
         output wire        data_sram_wr,
         output wire [1:0]  data_sram_size,
         output wire [31:0] data_sram_addr,
@@ -620,7 +620,7 @@ module mycpu_top #
     assign mem_has_exception = mem_valid & (mem_pref_adef | mem_ex_ale | mem_id_ine | mem_id_break | mem_id_syscall | mem_id_has_int | mem_id_ertn_flush);
     assign ex_has_exception = ex_valid & (ex_ale | ex_pref_adef | ex_id_ine | ex_id_break | ex_id_syscall | ex_id_has_int | ex_id_ertn_flush);
 
-    assign data_sram_req = ex_mem_op && mem_allowin;
+    // assign data_sram_req = ex_mem_op && mem_allowin;
     assign data_sram_wr = ex_op_st_b | ex_op_st_h | ex_op_st_w;
     assign data_sram_size = ex_op_st_b || ex_mem_byte ? 2'b00 :
 							ex_op_st_h || ex_mem_half ? 2'b01 :
@@ -635,9 +635,14 @@ module mycpu_top #
 	reg waiting_for_data;
 	always @(posedge clk) begin
 		if (reset ) begin
+			data_sram_req <= 0;
 			waiting_for_data <= 0;
 		end
+		if (ex_mem_op && mem_allowin && !waiting_for_data) begin
+			data_sram_req <= 1;
+		end
 		if (data_sram_addr_ok && data_sram_req) begin
+			data_sram_req <= 0;
 			waiting_for_data <= 1;
 		end
 		else if (waiting_for_data && data_sram_data_ok) begin
@@ -910,7 +915,7 @@ module mycpu_top #
 
     // ex stage
     assign ex_ready_go = ex_div_enable ? div_complete :
-           ex_mem_op ? data_sram_addr_ok :
+           ex_mem_op ? data_sram_req && data_sram_addr_ok :
            1; // todo
     assign ex_allowin = !ex_valid || ex_ready_go && mem_allowin;
     assign ex_to_mem_valid = ex_valid && ex_ready_go;
