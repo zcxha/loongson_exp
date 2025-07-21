@@ -1254,7 +1254,7 @@ module mycpu_top #
             wb_valid <= 1'b0;
             wb_reg <= 500'b0;
         end
-        else if (wb_id_ertn_flush || wb_has_exception || wb_pc == mem_pc) begin
+        else if (wb_id_ertn_flush || wb_has_exception) begin
             wb_valid <= 1'b0;
         end
         else if (wb_allowin) begin
