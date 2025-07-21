@@ -225,13 +225,23 @@ module mycpu_top #
     // assign inst_sram_req = (op_br_compare && ex_valid ? br_valid : 1) && if_allowin && resetn;
 
     assign seq_pc       = ~if_allowin ? pc : pc + 32'h4;
-    assign nextpc = (wb_valid && (wb_has_exception || wb_id_ertn_flush)) ?
-           ( {32{wb_has_exception}} & wb_ex_entry |
-             {32{wb_id_ertn_flush}}   & wb_ertn_pc ) :
-           (br_taken_cancel) ?
-           br_target :
+    assign nextpc = (wb_valid && (wb_has_exception || wb_id_ertn_flush)) ? ( {32{wb_has_exception}} & wb_ex_entry | {32{wb_id_ertn_flush}}   & wb_ertn_pc ) :
+           (br_taken_cancel) ? br_target :
            seq_pc;
     assign pref_adef	= ((nextpc & 2'b11) != 2'b00);
+
+	reg cancel_inst;
+	reg [31:0] cached_npc;
+	always @(posedge clk) begin
+		if (reset) begin
+			cancel_inst <= 0;
+			cached_npc <= 32'b0;
+		end
+		if (br_taken_cancel) begin
+			cancel_inst <= 1;
+			cached_npc <= nextpc; // 跳转目标
+		end
+	end
 
     reg waiting_for_inst;
 
@@ -241,9 +251,15 @@ module mycpu_top #
             inst_sram_req <= 0;
             pc <= 32'h1bfffffc;     //trick: to make nextpc be 0x1c000000 during reset
         end
-        if ((if_allowin && inst_sram_req == 0 || br_taken_cancel) && !waiting_for_inst) begin
-            inst_sram_req <= 1;
-            pc <= nextpc;
+        if ((if_allowin && inst_sram_req == 0) && !waiting_for_inst) begin
+			inst_sram_req <= 1;
+			if (cancel_inst) begin
+            	pc <= cached_npc;
+				cancel_inst <= 0;
+			end
+			else begin 
+				pc <= nextpc;
+			end
         end
         else if (inst_sram_addr_ok && inst_sram_req) begin
             inst_sram_req <= 0;
@@ -622,8 +638,8 @@ module mycpu_top #
 
     // assign data_sram_req = ex_mem_op && mem_allowin;
     assign data_sram_wr = ex_op_st_b | ex_op_st_h | ex_op_st_w;
-    assign data_sram_size = ex_op_st_b || ex_mem_byte ? 2'b00 :
-							ex_op_st_h || ex_mem_half ? 2'b01 :
+    assign data_sram_size = (ex_op_st_b || ex_mem_byte) ? 2'b00 :
+							(ex_op_st_h || ex_mem_half) ? 2'b01 :
 							2'b10;
     assign data_sram_wstrb    = {4{~mem_has_exception & ~wb_has_exception & ~ex_has_exception}}
            & mem_we & {4{valid}}; // 如果其或者其后的流水段发生异常，则停止写ram
@@ -776,7 +792,7 @@ module mycpu_top #
     wire validin;
     wire pre_if_ready_go;
     wire to_fs_valid;
-    assign to_fs_valid = inst_sram_req && inst_sram_addr_ok;
+    assign to_fs_valid = inst_sram_req && inst_sram_addr_ok && !cancel_inst;
     assign pre_if_ready_go = to_fs_valid;
     assign validin = ~(wb_id_ertn_flush | wb_has_exception) & pre_if_ready_go ;
 
