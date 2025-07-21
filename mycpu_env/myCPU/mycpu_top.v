@@ -230,47 +230,47 @@ module mycpu_top #
            seq_pc;
     assign pref_adef	= ((pc & 2'b11) != 2'b00);
 
-	reg cancel_inst;
-	reg exception_cancel_flag;
-	reg [31:0] cached_npc;
-	always @(posedge clk) begin
-		if (reset) begin
-			cancel_inst <= 0;
-			exception_cancel_flag <= 0;
-			cached_npc <= 32'b0;
-		end
-		if (wb_has_exception || wb_id_ertn_flush) begin
-			exception_cancel_flag <= 1;
-			cached_npc <= nextpc; // 异常处理程序入口
-		end
-		else if (br_taken_cancel) begin
-			cancel_inst <= 1;
-			cached_npc <= nextpc; // 跳转目标
-			
-		end
-	end
+    reg cancel_inst;
+    reg exception_cancel_flag;
+    reg [31:0] cached_npc;
+    always @(posedge clk) begin
+        if (reset) begin
+            cancel_inst <= 0;
+            exception_cancel_flag <= 0;
+            cached_npc <= 32'b0;
+        end
+        if (wb_has_exception || wb_id_ertn_flush) begin
+            exception_cancel_flag <= 1;
+            cached_npc <= nextpc; // 异常处理程序入口
+        end
+        else if (br_taken_cancel) begin
+            cancel_inst <= 1;
+            cached_npc <= nextpc; // 跳转目标
+
+        end
+    end
 
     reg waiting_for_inst;
 
     always @(posedge clk) begin
         if (reset) begin
-			waiting_for_inst <= 0;
+            waiting_for_inst <= 0;
             inst_sram_req <= 0;
             pc <= 32'h1bfffffc;     //trick: to make nextpc be 0x1c000000 during reset
         end
         if ((if_allowin && inst_sram_req == 0) && !waiting_for_inst) begin
-			inst_sram_req <= 1;
-			if (exception_cancel_flag) begin
-				pc <= cached_npc;
-				exception_cancel_flag <= 0;
-			end
-			else if (cancel_inst) begin
-            	pc <= cached_npc;
-				cancel_inst <= 0;
-			end
-			else begin 
-				pc <= nextpc;
-			end
+            inst_sram_req <= 1;
+            if (exception_cancel_flag) begin
+                pc <= cached_npc;
+                exception_cancel_flag <= 0;
+            end
+            else if (cancel_inst) begin
+                pc <= cached_npc;
+                cancel_inst <= 0;
+            end
+            else begin
+                pc <= nextpc;
+            end
         end
         else if (inst_sram_addr_ok && inst_sram_req) begin
             inst_sram_req <= 0;
@@ -644,39 +644,38 @@ module mycpu_top #
            ex_op_st_h ? (EX_result[1:0]==2'b00 ? 4'b0011 :
                          4'b1100) :
            {4{ex_op_st_w}};
-	assign id_has_exception = id_valid & (id_pref_adef | id_ine | id_break | id_syscall | id_has_int | id_ertn_flush);
+    assign id_has_exception = id_valid & (id_pref_adef | id_ine | id_break | id_syscall | id_has_int | id_ertn_flush);
     assign mem_has_exception = mem_valid & (mem_pref_adef | mem_ex_ale | mem_id_ine | mem_id_break | mem_id_syscall | mem_id_has_int | mem_id_ertn_flush);
     assign ex_has_exception = ex_valid & (ex_ale | ex_pref_adef | ex_id_ine | ex_id_break | ex_id_syscall | ex_id_has_int | ex_id_ertn_flush);
 
     // assign data_sram_req = ex_mem_op && mem_allowin;
-    assign data_sram_wr = ex_op_st_b | ex_op_st_h | ex_op_st_w;
+    assign data_sram_wr = (ex_op_st_b | ex_op_st_h | ex_op_st_w) && (!wb_has_exception && !mem_has_exception && !ex_has_exception) && ex_valid; // 如果其或者其后的流水段发生异常，则停止写ram
     assign data_sram_size = (ex_mem_byte) ? 2'b00 :
-							(ex_mem_half) ? 2'b01 : // 写传输size=4靠写掩码写位 读定义传输size
-							2'b10;
-    assign data_sram_wstrb    = {4{~mem_has_exception & ~wb_has_exception & ~ex_has_exception}}
-           & mem_we & {4{valid}}; // 如果其或者其后的流水段发生异常，则停止写ram
+           (ex_mem_half) ? 2'b01 : // 写传输size=4靠写掩码写位 读定义传输size
+           2'b10;
+    assign data_sram_wstrb    = mem_we & {4{valid}};
     assign data_sram_addr  = EX_result & 32'hFFFF_FFFC;
     assign data_sram_wdata = ex_op_st_b ? {4{ex_rkd_value[7:0]}} :
            ex_op_st_h ? {2{ex_rkd_value[15:0]}} :
            ex_rkd_value;
 
-	reg waiting_for_data;
-	always @(posedge clk) begin
-		if (reset ) begin
-			data_sram_req <= 0;
-			waiting_for_data <= 0;
-		end
-		if (ex_valid && ex_mem_op && mem_allowin && !waiting_for_data) begin
-			data_sram_req <= 1;
-		end
-		if (data_sram_addr_ok && data_sram_req) begin
-			data_sram_req <= 0;
-			waiting_for_data <= 1;
-		end
-		else if (waiting_for_data && data_sram_data_ok) begin
-			waiting_for_data <= 0;
-		end
-	end
+    reg waiting_for_data;
+    always @(posedge clk) begin
+        if (reset ) begin
+            data_sram_req <= 0;
+            waiting_for_data <= 0;
+        end
+        if (ex_valid && ex_mem_op && mem_allowin && !waiting_for_data) begin
+            data_sram_req <= 1;
+        end
+        if (data_sram_addr_ok && data_sram_req) begin
+            data_sram_req <= 0;
+            waiting_for_data <= 1;
+        end
+        else if (waiting_for_data && data_sram_data_ok) begin
+            waiting_for_data <= 0;
+        end
+    end
 
     /*------MEM------*/
 
@@ -771,7 +770,7 @@ module mycpu_top #
            wb_res_from_mem ? wb_mem_result :
            wb_EX_result;
 
-    assign rf_we    = wb_gr_we && valid && wb_valid && ~wb_has_exception ;
+    assign rf_we    = wb_gr_we && valid && wb_valid && ~wb_has_exception;
     assign rf_waddr = wb_dest;
     assign rf_wdata = final_result;
 
@@ -908,7 +907,7 @@ module mycpu_top #
             id_reg <= 500'b0;
         end
         else if (id_allowin) begin
-            if (wb_id_ertn_flush | wb_has_exception | mem_has_exception | ex_has_exception | id_has_exception) begin
+            if (wb_id_ertn_flush | wb_has_exception | mem_has_exception | ex_has_exception | id_has_exception | exception_cancel_flag) begin
                 id_valid <= 1'b0;
             end
             else if (br_taken_cancel) begin
@@ -1121,7 +1120,7 @@ module mycpu_top #
     wire mem_ready_go;
     wire mem_to_wb_valid;
 
-    assign mem_ready_go = !waiting_for_data;	
+    assign mem_ready_go = !waiting_for_data;
     assign mem_allowin = !mem_valid || mem_ready_go && wb_allowin;
     assign mem_to_wb_valid = mem_valid && mem_ready_go;
     always @(posedge clk) begin
