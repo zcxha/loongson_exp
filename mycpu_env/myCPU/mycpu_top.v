@@ -231,15 +231,22 @@ module mycpu_top #
     assign pref_adef	= ((pc & 2'b11) != 2'b00);
 
 	reg cancel_inst;
+	reg exception_cancel_flag;
 	reg [31:0] cached_npc;
 	always @(posedge clk) begin
 		if (reset) begin
 			cancel_inst <= 0;
+			exception_cancel_flag <= 0;
 			cached_npc <= 32'b0;
 		end
-		if (br_taken_cancel || wb_has_exception || wb_id_ertn_flush) begin
+		if (wb_has_exception || wb_id_ertn_flush) begin
+			exception_cancel_flag <= 1;
+			cached_npc <= nextpc; // 异常处理程序入口
+		end
+		else if (br_taken_cancel) begin
 			cancel_inst <= 1;
 			cached_npc <= nextpc; // 跳转目标
+			
 		end
 	end
 
@@ -253,7 +260,11 @@ module mycpu_top #
         end
         if ((if_allowin && inst_sram_req == 0) && !waiting_for_inst) begin
 			inst_sram_req <= 1;
-			if (cancel_inst) begin
+			if (exception_cancel_flag) begin
+				pc <= cached_npc;
+				exception_cancel_flag <= 0;
+			end
+			else if (cancel_inst) begin
             	pc <= cached_npc;
 				cancel_inst <= 0;
 			end
@@ -793,7 +804,7 @@ module mycpu_top #
     wire validin;
     wire pre_if_ready_go;
     wire to_fs_valid;
-    assign to_fs_valid = inst_sram_req && inst_sram_addr_ok && !cancel_inst && !id_has_exception && !ex_has_exception && !mem_has_exception && !wb_has_exception && !wb_id_ertn_flush;
+    assign to_fs_valid = inst_sram_req && inst_sram_addr_ok && !exception_cancel_flag && !cancel_inst && !id_has_exception && !ex_has_exception && !mem_has_exception && !wb_has_exception && !wb_id_ertn_flush;
     assign pre_if_ready_go = to_fs_valid;
     assign validin = ~(wb_id_ertn_flush | wb_has_exception) & pre_if_ready_go ;
 
@@ -1118,7 +1129,7 @@ module mycpu_top #
             mem_valid <= 1'b0;
             mem_reg <= 500'b0;
         end
-        else if (wb_id_ertn_flush | wb_has_exception ) begin
+        else if (wb_id_ertn_flush | wb_has_exception) begin
             mem_valid <= 1'b0;
         end
         else if (mem_allowin) begin
