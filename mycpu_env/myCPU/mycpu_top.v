@@ -638,8 +638,8 @@ module mycpu_top #
 
     // assign data_sram_req = ex_mem_op && mem_allowin;
     assign data_sram_wr = ex_op_st_b | ex_op_st_h | ex_op_st_w;
-    assign data_sram_size = (ex_op_st_b || ex_mem_byte) ? 2'b00 :
-							(ex_op_st_h || ex_mem_half) ? 2'b01 :
+    assign data_sram_size = (ex_mem_byte) ? 2'b00 :
+							(ex_mem_half) ? 2'b01 : // 写传输size=4靠写掩码写位 读定义传输size
 							2'b10;
     assign data_sram_wstrb    = {4{~mem_has_exception & ~wb_has_exception & ~ex_has_exception}}
            & mem_we & {4{valid}}; // 如果其或者其后的流水段发生异常，则停止写ram
@@ -654,7 +654,7 @@ module mycpu_top #
 			data_sram_req <= 0;
 			waiting_for_data <= 0;
 		end
-		if (ex_mem_op && mem_allowin && !waiting_for_data) begin
+		if (ex_valid && ex_mem_op && mem_allowin && !waiting_for_data) begin
 			data_sram_req <= 1;
 		end
 		if (data_sram_addr_ok && data_sram_req) begin
