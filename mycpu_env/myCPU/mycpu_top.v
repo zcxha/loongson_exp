@@ -228,7 +228,7 @@ module mycpu_top #
     assign nextpc = (wb_valid && (wb_has_exception || wb_id_ertn_flush)) ? ( {32{wb_has_exception}} & wb_ex_entry | {32{wb_id_ertn_flush}}   & wb_ertn_pc ) :
            (br_taken_cancel) ? br_target :
            seq_pc;
-    assign pref_adef	= ((nextpc & 2'b11) != 2'b00);
+    assign pref_adef	= ((pc & 2'b11) != 2'b00);
 
 	reg cancel_inst;
 	reg [31:0] cached_npc;
@@ -237,7 +237,7 @@ module mycpu_top #
 			cancel_inst <= 0;
 			cached_npc <= 32'b0;
 		end
-		if (br_taken_cancel) begin
+		if (br_taken_cancel || wb_has_exception || wb_id_ertn_flush) begin
 			cancel_inst <= 1;
 			cached_npc <= nextpc; // 跳转目标
 		end
@@ -557,7 +557,7 @@ module mycpu_top #
                           || inst_jirl
                           || inst_bl
                           || inst_b
-                      ) && valid && (br_target != if_pc) && br_valid;
+                      ) && valid && br_valid;
     assign br_target = (inst_beq || inst_bne || inst_blt || inst_bge || inst_bltu || inst_bgeu || inst_bl || inst_b) ? (id_pc + br_offs) :
            /*inst_jirl*/ (rj_value + jirl_offs);
 
@@ -633,6 +633,7 @@ module mycpu_top #
            ex_op_st_h ? (EX_result[1:0]==2'b00 ? 4'b0011 :
                          4'b1100) :
            {4{ex_op_st_w}};
+	assign id_has_exception = id_valid & (id_pref_adef | id_ine | id_break | id_syscall | id_has_int | id_ertn_flush);
     assign mem_has_exception = mem_valid & (mem_pref_adef | mem_ex_ale | mem_id_ine | mem_id_break | mem_id_syscall | mem_id_has_int | mem_id_ertn_flush);
     assign ex_has_exception = ex_valid & (ex_ale | ex_pref_adef | ex_id_ine | ex_id_break | ex_id_syscall | ex_id_has_int | ex_id_ertn_flush);
 
@@ -792,7 +793,7 @@ module mycpu_top #
     wire validin;
     wire pre_if_ready_go;
     wire to_fs_valid;
-    assign to_fs_valid = inst_sram_req && inst_sram_addr_ok && !cancel_inst;
+    assign to_fs_valid = inst_sram_req && inst_sram_addr_ok && !cancel_inst && !id_has_exception && !ex_has_exception && !mem_has_exception && !wb_has_exception && !wb_id_ertn_flush;
     assign pre_if_ready_go = to_fs_valid;
     assign validin = ~(wb_id_ertn_flush | wb_has_exception) & pre_if_ready_go ;
 
@@ -896,7 +897,7 @@ module mycpu_top #
             id_reg <= 500'b0;
         end
         else if (id_allowin) begin
-            if (wb_id_ertn_flush | wb_has_exception) begin
+            if (wb_id_ertn_flush | wb_has_exception | mem_has_exception | ex_has_exception | id_has_exception) begin
                 id_valid <= 1'b0;
             end
             else if (br_taken_cancel) begin
@@ -1356,7 +1357,7 @@ module mycpu_top #
     assign wb_id_break = wb_reg[180];
     assign wb_id_syscall = wb_reg[181];
     assign wb_id_has_int = wb_reg[182];
-    assign wb_id_ertn_flush = wb_reg[183];
+    assign wb_id_ertn_flush = wb_reg[183] & wb_valid;
 
     /*------csr读写指令信号------*/
 
