@@ -28,7 +28,7 @@ module sram_to_axi_bridge_2_1 (
         /* 一个AXI主方 */
 
         // ar
-        output reg [4:0] arid, // 读请求ID
+        output reg [3:0] arid, // 读请求ID
         output reg [31:0] araddr, // 读请求地址
         output wire [7:0] arlen, // 读请求传输长度
         output reg [2:0] arsize, // 读请求传输大小
@@ -74,9 +74,28 @@ module sram_to_axi_bridge_2_1 (
         output wire bready // 写请求响应握手信号，主方准备好接收写响应
     );
 
-    wire req_type = data_sram_req ? 1 : 0; // 数据访问为1 指令访问为0
 
-    wire sram_req = req_type ? data_sram_req : inst_sram_req;
+    reg inst_sram_req_d;
+    reg data_sram_req_d;
+    wire inst_sram_req_pulse;
+    wire data_sram_req_pulse;
+
+    always @(posedge clk) begin
+        if (~resetn) begin
+            inst_sram_req_d <= 0;
+            data_sram_req_d <= 0;
+        end
+        else begin
+            inst_sram_req_d <= inst_sram_req;
+            data_sram_req_d <= data_sram_req;
+        end
+    end
+    assign inst_sram_req_pulse = inst_sram_req & ~inst_sram_req_d;
+    assign data_sram_req_pulse = data_sram_req & ~data_sram_req_d;
+
+    wire req_type = data_sram_req_pulse ? 1 : 0; // 数据访问为1 指令访问为0
+
+    wire sram_req = req_type ? data_sram_req_pulse : inst_sram_req_pulse;
     wire sram_wr = req_type ? data_sram_wr : inst_sram_wr;
     wire [1:0] sram_size = req_type ? data_sram_size : inst_sram_size;
     wire [31:0] sram_addr = req_type ? data_sram_addr : inst_sram_addr;
@@ -96,6 +115,7 @@ module sram_to_axi_bridge_2_1 (
 
     reg b_has_resp;
 
+
     // ar
     assign arlen = 0;
     // arsize
@@ -104,10 +124,22 @@ module sram_to_axi_bridge_2_1 (
     assign arcache = 0;
     assign arprot = 0;
 
+    reg cached_sram_req;
+    reg cached_sram_wr;
+    reg [3:0 ] cached_arid;
+    reg [31:0] cached_araddr;
+    reg [2:0] cached_arsize;
+
     // arvalid
     // arready
     always @(posedge clk) begin
         if (~resetn) begin
+            cached_sram_req <= 0;
+            cached_sram_wr <= 0;
+            cached_arid <= 4'b0;
+            cached_araddr <= 32'b0;
+            cached_arsize <= 3'b0;
+
             ar_state <= AR_IDLE;
 
             arid <= 4'b0;
@@ -116,14 +148,29 @@ module sram_to_axi_bridge_2_1 (
             arvalid <= 0;
         end
         else begin
+            if (sram_req && !sram_wr && (aw_w_state != AW_W_IDLE || ar_state != AR_IDLE)) begin
+                // 缓存读请求
+                cached_sram_req <= sram_req;
+                cached_sram_wr <= sram_wr;
+                cached_arid <= req_type;
+                cached_araddr <= sram_addr;
+                cached_arsize <= {1'b0,sram_size};
+            end
             case (ar_state)
                 AR_IDLE: begin
-                    if (sram_req && !sram_wr && aw_w_state==AW_W_IDLE) begin
+                    if (cached_sram_req && !cached_sram_wr && aw_w_state==AW_W_IDLE) begin
+                        arid <= cached_arid;
+                        araddr <= cached_araddr;
+                        arsize <= cached_arsize;
+                        arvalid <= 1;
+                        ar_state <= AR_WAIT;
+                        cached_sram_req <= 0; // 清除缓存
+                    end
+                    else if (sram_req && !sram_wr&& aw_w_state==AW_W_IDLE) begin
                         arid <= req_type;
                         araddr <= sram_addr;
                         arsize <= {1'b0, sram_size};
                         arvalid <= 1;
-
                         ar_state <= AR_WAIT;
                     end
                 end
@@ -174,9 +221,9 @@ module sram_to_axi_bridge_2_1 (
             awvalid <= 0;
             awaddr <= 32'b0;
 
-			wvalid <= 0;
-			wstrb <= 4'b0;
-			wdata <= 32'b0;
+            wvalid <= 0;
+            wstrb <= 4'b0;
+            wdata <= 32'b0;
         end
         case (aw_w_state)
             AW_W_IDLE: begin

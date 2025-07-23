@@ -298,7 +298,7 @@ module core #
         end
         else if (!id_allowin && if_ready_go) begin
             if_buffer <= {pref_adef,if_data_in,if_pc};
-            buffer_valid <= 1'b1;
+            buffer_valid <= 1'b0;
         end
         else begin
             buffer_valid <= 0;
@@ -892,7 +892,8 @@ module core #
     assign id_need_forward_data = rjk_dest_inst | rj_dest_inst | rjd_dest_inst; // 如lu12i不需要forward则不需要load-use阻塞
 
     assign id_ready_go =~(
-               ((ex_valid & ex_mem_forward & (ex_dest == rf_raddr1 || ex_dest == rf_raddr2))  // load-use 阻塞一次
+               ((ex_valid & ex_mem_forward & (ex_dest == rf_raddr1 || ex_dest == rf_raddr2))  // load-use 阻塞两个流水级 等MEM出数据了再回绕
+			    | (mem_valid & mem_mem_forward & (mem_dest == rf_raddr1 || mem_dest == rf_raddr2))
                 | (op_br_compare & ex_valid & ex_ex_forward & (ex_dest == rf_raddr1 || ex_dest == rf_raddr2)) // 遇到数据冲突的branch指令阻塞一次取mem段alures用于去除关键路径
                 | (ex_valid & ex_inst_csr & data_related_ex) //
                 | (mem_valid & mem_inst_csr & data_related_mem) // 指令与CSR的rd数据相关，则阻塞到ID段2拍
