@@ -148,7 +148,15 @@ module sram_to_axi_bridge_2_1 (
             arvalid <= 0;
         end
         else begin
-            if (sram_req && !sram_wr && (aw_w_state != AW_W_IDLE || ar_state != AR_IDLE)) begin
+			if (data_sram_req_pulse && inst_sram_req_pulse) begin
+				// 数据操作比指令操作优先
+				cached_sram_req <= inst_sram_req_pulse;
+				cached_sram_wr <= inst_sram_wr;
+				cached_arid <= 0;
+				cached_araddr <= inst_sram_addr;
+				cached_arsize <= {1'b0,inst_sram_size};
+			end
+            else if (sram_req && !sram_wr && (aw_w_state != AW_W_IDLE || ar_state != AR_IDLE)) begin
                 // 缓存读请求
                 cached_sram_req <= sram_req;
                 cached_sram_wr <= sram_wr;

@@ -552,7 +552,8 @@ module core #
            (rf_raddr2 != 0 && wb_valid && rf_raddr2 == wb_dest && (wb_wb_forward || wb_ex_forward || wb_mem_forward))? final_result:
            rf_rdata2;
 
-    assign br_valid = ~(op_br_compare && ex_valid && (ex_ex_forward || ex_mem_forward) && (rf_raddr1 == ex_dest || rf_raddr2 == ex_dest )
+    assign br_valid = ~(op_br_compare && (ex_valid && (ex_ex_forward || ex_mem_forward) && (rf_raddr1 == ex_dest || rf_raddr2 == ex_dest ) // 跟EX段的ex或mem数据相关
+						|| mem_valid && mem_mem_forward && (rf_raddr1 == mem_dest || rf_raddr2 == mem_dest)) // 等待MEM段的MEM_out再forward给branch
                         || (ex_valid && ex_inst_csr && data_related_ex)
                         || (mem_valid && mem_inst_csr && data_related_mem));
 
