@@ -113,7 +113,7 @@ module mycpu_top (
              .debug_wb_rf_wdata (debug_wb_rf_wdata)
          );
 
-    sram_to_axi_bridge_2_1 (
+    sram_to_axi_bridge_2_1 u_sram_to_axi_bridge_2_1(
             .clk				(aclk),
             .resetn				(aresetn),
             
