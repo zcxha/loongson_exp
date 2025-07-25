@@ -56,6 +56,12 @@ module core #
 
     wire [11:0] alu_op;
     wire        load_op;
+    wire		tlbsrch_op;
+    wire		tlbrd_op;
+    wire		tlbwr_op;
+    wire		tlbfill_op;
+    wire		invtlb_valid;
+    wire [4:0]	invtlb_op;
     wire        src1_is_pc;
     wire        src2_is_imm;
     wire        res_from_mem;
@@ -173,6 +179,12 @@ module core #
     wire		inst_rdcntvl_w;
     wire		inst_rdcntvh_w;
     wire		inst_rdcntid;
+
+    wire		inst_tlbsrch;
+    wire		inst_tlbrd;
+    wire		inst_tlbwr;
+    wire		inst_tlbfill;
+    wire		inst_invtlb;
 
     wire        need_ui5;
     wire        need_si12;
@@ -401,6 +413,17 @@ module core #
     assign inst_rdcntvl_w = op_31_26_d[6'h00] & op_25_22_d[4'h0] & op_21_20_d[2'h0] & op_19_15_d[5'h00] & op_14_10_d[5'h18] & op_09_05_d[5'h00];
     assign inst_rdcntvh_w = op_31_26_d[6'h00] & op_25_22_d[4'h0] & op_21_20_d[2'h0] & op_19_15_d[5'h00] & op_14_10_d[5'h19] & op_09_05_d[5'h00];
 
+    assign inst_tlbsrch = op_31_26_d[6'h01] & op_25_22_d[4'h9] & op_21_20_d[2'h0] & op_19_15_d[5'h10] & op_14_10_d[5'h0a] & op_09_05_d[5'h00] & op_04_00_d[5'h00];
+    assign inst_tlbrd = op_31_26_d[6'h01] & op_25_22_d[4'h9] & op_21_20_d[2'h0] & op_19_15_d[5'h10] & op_14_10_d[5'h0b] & op_09_05_d[5'h00] & op_04_00_d[5'h00];
+    assign inst_tlbwr = op_31_26_d[6'h01] & op_25_22_d[4'h9] & op_21_20_d[2'h0] & op_19_15_d[5'h10] & op_14_10_d[5'h0c] & op_09_05_d[5'h00] & op_04_00_d[5'h00];
+    assign inst_tlbfill = op_31_26_d[6'h01] & op_25_22_d[4'h9] & op_21_20_d[2'h0] & op_19_15_d[5'h10] & op_14_10_d[5'h0d] & op_09_05_d[5'h00] & op_04_00_d[5'h00];
+    assign inst_invtlb = op_31_26_d[6'h01] & op_25_22_d[4'h9] & op_21_20_d[2'h0] & op_19_15_d[5'h13];
+
+	wire invtlb_op_inv;
+	assign invtlb_op_inv = (rd[4:3] != 2'b00 || rd == 5'b00111) && inst_invtlb; // op > 6
+    assign {tlbsrch_op,tlbrd_op,tlbwr_op,tlbfill_op,invtlb_valid} = {inst_tlbsrch,inst_tlbrd,inst_tlbwr,inst_tlbfill,inst_invtlb & ~invtlb_op_inv};
+    assign invtlb_op = rd;
+
     assign res_from_timer = inst_rdcntvl_w | inst_rdcntvh_w;
     assign timer_op = inst_rdcntvh_w;
 
@@ -414,7 +437,8 @@ module core #
                       | inst_srl_w | inst_sra_w | inst_pcaddu12i | inst_mul_w | inst_mulh_w
                       | inst_mulh_wu | inst_div_w | inst_mod_w | inst_div_wu | inst_mod_wu
                       | inst_break | inst_syscall | inst_ertn | inst_csrrd | inst_csrwr
-                      | inst_csrxchg | inst_rdcntvl_w | inst_rdcntvh_w | inst_rdcntid); // 指令不存在异常
+                      | inst_csrxchg | inst_rdcntvl_w | inst_rdcntvh_w | inst_rdcntid | inst_tlbsrch
+                      | inst_tlbrd | inst_tlbwr | inst_tlbfill | inst_invtlb) | invtlb_op_inv; // 指令不存在异常 或者指令保留异常
 
     assign id_syscall = inst_syscall;
     assign id_break = inst_break; // 系统调用和断点异常
@@ -514,7 +538,7 @@ module core #
     assign res_from_mem  = inst_ld_w | inst_ld_b | inst_ld_bu | inst_ld_h | inst_ld_hu;
     assign dst_is_r1     = inst_bl;
     assign dst_is_rj	 = inst_rdcntid;
-    assign gr_we         = ~inst_st_b & ~inst_st_h & ~inst_st_w & ~inst_beq & ~inst_bne & ~inst_blt & ~inst_bge & ~inst_bltu & ~inst_bgeu & ~inst_b;
+    assign gr_we         = ~inst_st_b & ~inst_st_h & ~inst_st_w & ~inst_beq & ~inst_bne & ~inst_blt & ~inst_bge & ~inst_bltu & ~inst_bgeu & ~inst_b & ~inst_tlbsrch & ~inst_tlbfill & ~inst_tlbrd & ~inst_tlbwr & ~inst_invtlb;
     assign dest          = dst_is_r1 ? 5'd1 : dst_is_rj ? rj : rd;
 
     assign mem_op = inst_ld_w | inst_ld_h | inst_ld_b | inst_ld_bu | inst_ld_hu | inst_st_b | inst_st_w | inst_st_h;
@@ -553,7 +577,7 @@ module core #
            rf_rdata2;
 
     assign br_valid = ~(op_br_compare && (ex_valid && (ex_ex_forward || ex_mem_forward) && (rf_raddr1 == ex_dest || rf_raddr2 == ex_dest ) // 跟EX段的ex或mem数据相关
-						|| mem_valid && mem_mem_forward && (rf_raddr1 == mem_dest || rf_raddr2 == mem_dest)) // 等待MEM段的MEM_out再forward给branch
+                                          || mem_valid && mem_mem_forward && (rf_raddr1 == mem_dest || rf_raddr2 == mem_dest)) // 等待MEM段的MEM_out再forward给branch
                         || (ex_valid && ex_inst_csr && data_related_ex)
                         || (mem_valid && mem_inst_csr && data_related_mem));
 
@@ -678,6 +702,217 @@ module core #
         end
     end
 
+
+    wire [9:0] out_asid_asid;
+    wire [18:0] out_tlbehi_vppn;
+    wire [3:0] out_tlbidx_index;
+    wire [31:0] out_tlbelo0;
+    wire [31:0] out_tlbelo1;
+    wire [5:0] out_tlbidx_ps;
+    wire [5:0] out_estat_ecode;
+
+    wire [3:0] in_tlbidx_index;
+    wire in_tlbidx_ne;
+    wire [9:0] in_asid_asid;
+    wire [18:0] in_tlbehi_vppn;
+    wire [31:0] in_tlbelo0;
+    wire [31:0] in_tlbelo1;
+    wire [5:0] in_tlbidx_ps;
+
+    // EX tlbsrch
+    wire [3:0] tlbsrch_tlbidx_index;
+    wire tlbsrch_tlbidx_ne;
+
+    assign s1_vppn = ex_tlbsrch_op ? out_tlbehi_vppn : 
+					ex_invtlb_valid ? invtlb_va[31:13] : 0; // data vppn MUX
+    assign s1_va_bit12 = 0;
+    assign s1_asid = ex_tlbsrch_op ? out_asid_asid : 
+					ex_invtlb_valid ? invtlb_asid : 
+					0; // data asid MUX 或许数据访问时可以优化成inv_asid与out_asid的二选一？ :TODO
+
+    assign tlbsrch_tlbidx_index = s1_found ? s1_index : out_tlbidx_index;
+    assign tlbsrch_tlbidx_ne = s1_found ? 0 : 1;
+
+    // WB tlbrd
+    wire [3:0] r_index;
+    wire tlbrd_tlbidx_ne;
+    wire [18:0] tlbrd_tlbehi_vppn;
+    wire [31:0] tlbrd_tlbelo0;
+    wire [31:0] tlbrd_tlbelo1;
+    wire [5:0] tlbrd_tlbidx_ps;
+    wire [9:0] tlbrd_asid_asid;
+
+    assign r_index = wb_tlbrd_op ? out_tlbidx_index : 0;
+    assign tlbrd_tlbidx_ne = r_e ? 0 : 1;
+    assign tlbrd_tlbehi_vppn = r_e ? r_vppn : 0;
+    assign tlbrd_tlbelo0 = r_e ? {4'b0,r_ppn0,1'b0,r_g,r_mat0,r_plv0,r_d0,r_v0} : 0;
+    assign tlbrd_tlbelo1 = r_e ? {4'b0,r_ppn1,1'b0,r_g,r_mat1,r_plv1,r_d1,r_v1} : 0;
+    assign tlbrd_tlbidx_ps = r_e ? r_ps : 0;
+    assign tlbrd_asid_asid = r_e ? r_asid : 0;
+
+    // WB tlbwr/tlbfill
+    wire tlb_we;
+    assign tlb_we = wb_tlbwr_op | wb_tlbfill_op;
+    assign w_index = out_tlbidx_index; // TODO:TLBFILL为了简化实现，定义与tlbwr相同的index
+    assign w_e = (out_estat_ecode==`ECODE_TLBR) ? 1 :
+           ~out_tlbidx_ne;
+    assign {w_vppn,w_ps,w_g,w_asid} = {out_tlbehi_vppn,out_tlbidx_ps,
+                                       out_tlbelo0[`CSR_TLBELO0_G]&out_tlbelo1[`CSR_TLBELO1_G],
+                                       out_asid_asid};
+    assign {w_ppn0,w_plv0,w_mat0,w_d0,w_v0} = {out_tlbelo0[`CSR_TLBELO0_PPN],
+            out_tlbelo0[`CSR_TLBELO0_PLV],
+            out_tlbelo0[`CSR_TLBELO0_MAT],
+            out_tlbelo0[`CSR_TLBELO0_D],
+            out_tlbelo0[`CSR_TLBELO0_V]};
+    assign {w_ppn1,w_plv1,w_mat1,w_d1,w_v1} = {out_tlbelo1[`CSR_TLBELO1_PPN],
+            out_tlbelo1[`CSR_TLBELO1_PLV],
+            out_tlbelo1[`CSR_TLBELO1_MAT],
+            out_tlbelo1[`CSR_TLBELO1_D],
+            out_tlbelo1[`CSR_TLBELO1_V]};
+
+    // EX invtlb
+	wire [9:0] invtlb_asid;
+	wire [31:0] invtlb_va;
+    assign invtlb_asid = ex_rj_value[9:0];
+    assign invtlb_va = ex_rkd_value;
+
+    // MUX
+    assign in_tlbidx_index = tlbsrch_tlbidx_index;
+    assign in_tlbidx_ne = wb_tlbrd_op ? tlbrd_tlbidx_ne : tlbsrch_tlbidx_ne;
+    assign in_asid_asid = tlbrd_asid_asid;
+    assign in_tlbehi_vppn = tlbrd_tlbehi_vppn;
+    assign in_tlbelo0 = tlbrd_tlbelo0;
+    assign in_tlbelo1 = tlbrd_tlbelo1;
+    assign in_tlbidx_ps = tlbrd_tlbidx_ps;
+
+    /*T L B*/
+    // output declaration of module tlb
+    wire s0_found;
+    wire [15:0] s0_index;
+    wire [19:0] s0_ppn;
+    wire [5:0] s0_ps;
+    wire [1:0] s0_plv;
+    wire [1:0] s0_mat;
+    wire s0_d;
+    wire s0_v;
+    wire s1_found;
+    wire [15:0] s1_index;
+    wire [19:0] s1_ppn;
+    wire [5:0] s1_ps;
+    wire [1:0] s1_plv;
+    wire [1:0] s1_mat;
+    wire s1_d;
+    wire s1_v;
+    wire r_e;
+    wire [18:0] r_vppn;
+    wire [5:0] r_ps;
+    wire [9:0] r_asid;
+    wire r_g;
+    wire [19:0] r_ppn0;
+    wire [1:0] r_plv0;
+    wire [1:0] r_mat0;
+    wire r_d0;
+    wire r_v0;
+    wire [19:0] r_ppn1;
+    wire [1:0] r_plv1;
+    wire [1:0] r_mat1;
+    wire r_d1;
+    wire r_v1;
+
+	// input dec
+	wire [18:0] s0_vppn;
+	wire s0_va_bit12;
+	wire [9:0] s0_asid;
+
+	wire [18:0] s1_vppn;
+	wire s1_va_bit12;
+	wire [9:0] s1_asid;
+
+	wire [3:0] w_index;
+	wire w_e;
+	wire [18:0] w_vppn;
+	wire [5:0] w_ps;
+	wire [9:0] w_asid;
+	wire w_g;
+	wire [19:0] w_ppn0;
+	wire [1:0] w_plv0;
+	wire [1:0] w_mat0;
+	wire w_d0;
+	wire w_v0;
+	wire [19:0] w_ppn1;
+	wire [1:0] w_plv1;
+	wire [1:0] w_mat1;
+	wire w_d1;
+	wire w_v1;
+
+    tlb #(
+            .TLBNUM 	(16  ))
+        u_tlb(
+            .clk          	(clk           ),
+            .s0_vppn      	(s0_vppn       ),
+            .s0_va_bit12  	(s0_va_bit12   ),
+            .s0_asid      	(s0_asid       ),
+            .s0_found     	(s0_found      ),
+            .s0_index     	(s0_index      ),
+            .s0_ppn       	(s0_ppn        ),
+            .s0_ps        	(s0_ps         ),
+            .s0_plv       	(s0_plv        ),
+            .s0_mat       	(s0_mat        ),
+            .s0_d         	(s0_d          ),
+            .s0_v         	(s0_v          ),
+
+            .s1_vppn      	(s1_vppn       ),
+            .s1_va_bit12  	(s1_va_bit12   ),
+            .s1_asid      	(s1_asid       ),
+            .s1_found     	(s1_found      ),
+            .s1_index     	(s1_index      ),
+            .s1_ppn       	(s1_ppn        ),
+            .s1_ps        	(s1_ps         ),
+            .s1_plv       	(s1_plv        ),
+            .s1_mat       	(s1_mat        ),
+            .s1_d         	(s1_d          ),
+            .s1_v         	(s1_v          ),
+
+            .invtlb_valid 	(ex_invtlb_valid  ),
+            .invtlb_op    	(ex_invtlb_op     ),
+
+            .we           	(tlb_we            ),
+            .w_index      	(w_index       ),
+            .w_e          	(w_e           ),
+            .w_vppn       	(w_vppn        ),
+            .w_ps         	(w_ps          ),
+            .w_asid       	(w_asid        ),
+            .w_g          	(w_g           ),
+            .w_ppn0       	(w_ppn0        ),
+            .w_plv0       	(w_plv0        ),
+            .w_mat0       	(w_mat0        ),
+            .w_d0         	(w_d0          ),
+            .w_v0         	(w_v0          ),
+            .w_ppn1       	(w_ppn1        ),
+            .w_plv1       	(w_plv1        ),
+            .w_mat1       	(w_mat1        ),
+            .w_d1         	(w_d1          ),
+            .w_v1         	(w_v1          ),
+
+            .r_index      	(r_index       ),
+            .r_e          	(r_e           ),
+            .r_vppn       	(r_vppn        ),
+            .r_ps         	(r_ps          ),
+            .r_asid       	(r_asid        ),
+            .r_g          	(r_g           ),
+            .r_ppn0       	(r_ppn0        ),
+            .r_plv0       	(r_plv0        ),
+            .r_mat0       	(r_mat0        ),
+            .r_d0         	(r_d0          ),
+            .r_v0         	(r_v0          ),
+            .r_ppn1       	(r_ppn1        ),
+            .r_plv1       	(r_plv1        ),
+            .r_mat1       	(r_mat1        ),
+            .r_d1         	(r_d1          ),
+            .r_v1         	(r_v1          )
+        );
+
+
     /*------MEM------*/
 
     wire [31:0] mem_out;
@@ -747,6 +982,10 @@ module core #
                 .csr_we		(wb_csr_we & wb_valid),
                 .csr_wmask	(wb_csr_mask),
                 .csr_wvalue	(wb_csr_wvalue),
+                .tlbsrch_op (ex_tlbsrch_op),
+                .tlbrd_op (wb_tlbrd_op),
+                // TLBSRCH TLBRD 对CSR有更改 其他TLB指令都是读CSR
+
                 // output
                 .csr_rvalue	(wb_csr_rvalue),
                 /***硬件交互接口***/
@@ -763,7 +1002,24 @@ module core #
                 // output
                 .ex_entry(wb_ex_entry), // 送往取指的异常处理入口地址
                 .has_int(wb_has_int), // 送往ID的中断有效信号
-                .ertn_pc(wb_ertn_pc) // 送往取指的ertn返回的指令地址
+                .ertn_pc(wb_ertn_pc), // 送往取指的ertn返回的指令地址
+
+                .in_tlbidx_index(in_tlbidx_index),
+                .in_tlbidx_ne(in_tlbidx_ne),
+                .in_asid_asid(in_asid_asid),
+                .in_tlbehi_vppn(in_tlbehi_vppn),
+                .in_tlbelo0(in_tlbelo0),
+                .in_tlbelo1(in_tlbelo1),
+                .in_tlbidx_ps(in_tlbidx_ps),
+                .out_tlbidx_index(out_tlbidx_index),
+                .out_tlbidx_ne(out_tlbidx_ne),
+                .out_asid_asid(out_asid_asid),
+                .out_tlbehi_vppn(out_tlbehi_vppn),
+                .out_tlbelo0(out_tlbelo0),
+                .out_tlbelo1(out_tlbelo1),
+                .out_tlbidx_ps(out_tlbidx_ps),
+                .out_estat_ecode(out_estat_ecode)
+
             );
 
     // 写回
@@ -856,7 +1112,7 @@ module core #
     // 3.rj | rd = dest�?
     // st,beq,bne
 
-    wire rjk_dest_inst = inst_add_w | inst_sub_w | inst_slt | inst_sltu | inst_nor | inst_and | inst_or | inst_xor | inst_sll_w | inst_srl_w | inst_sra_w | inst_mul_w | inst_mulh_w | inst_mulh_wu | inst_div_w | inst_div_wu | inst_mod_w | inst_mod_wu;
+    wire rjk_dest_inst = inst_add_w | inst_sub_w | inst_slt | inst_sltu | inst_nor | inst_and | inst_or | inst_xor | inst_sll_w | inst_srl_w | inst_sra_w | inst_mul_w | inst_mulh_w | inst_mulh_wu | inst_div_w | inst_div_wu | inst_mod_w | inst_mod_wu | inst_invtlb;
     wire rj_dest_inst = inst_slli_w | inst_srli_w | inst_srai_w | inst_addi_w | inst_ld_w | inst_ld_b | inst_ld_bu | inst_ld_h | inst_ld_hu | inst_jirl | inst_slti | inst_sltui | inst_andi | inst_ori | inst_xori;
     wire rjd_dest_inst = inst_st_w | inst_st_b | inst_st_h | inst_beq | inst_bne | inst_blt | inst_bge | inst_bltu | inst_bgeu | inst_csrxchg;
     wire rd_dest_inst = inst_csrwr;
@@ -894,7 +1150,7 @@ module core #
 
     assign id_ready_go =~(
                ((ex_valid & ex_mem_forward & (ex_dest == rf_raddr1 || ex_dest == rf_raddr2))  // load-use 阻塞两个流水级 等MEM出数据了再回绕
-			    | (mem_valid & mem_mem_forward & (mem_dest == rf_raddr1 || mem_dest == rf_raddr2))
+                | (mem_valid & mem_mem_forward & (mem_dest == rf_raddr1 || mem_dest == rf_raddr2))
                 | (op_br_compare & ex_valid & ex_ex_forward & (ex_dest == rf_raddr1 || ex_dest == rf_raddr2)) // 遇到数据冲突的branch指令阻塞一次取mem段alures用于去除关键路径
                 | (ex_valid & ex_inst_csr & data_related_ex) //
                 | (mem_valid & mem_inst_csr & data_related_mem) // 指令与CSR的rd数据相关，则阻塞到ID段2拍
@@ -975,7 +1231,7 @@ module core #
             ex_reg[181] <= mem_forward;
             ex_reg[182] <= wb_forward;
 
-            ex_reg[214:183] <= mem_result;
+            ex_reg[214:183] <= rj_value;
 
             ex_reg[215] <= mul_signed;
             ex_reg[216] <= mul_hres;
@@ -1011,6 +1267,12 @@ module core #
             ex_reg[316] <= res_from_timer;
             ex_reg[317] <= timer_op;
             ex_reg[318] <= mem_op;
+            ex_reg[319] <= tlbsrch_op;
+            ex_reg[320] <= tlbrd_op;
+            ex_reg[321] <= tlbwr_op;
+            ex_reg[322] <= tlbfill_op;
+            ex_reg[323] <= invtlb_valid;
+            ex_reg[328:324] <= invtlb_op;
 
         end
     end
@@ -1039,6 +1301,7 @@ module core #
     wire [31:0] ex_alu_src1;
     wire [31:0] ex_alu_src2;
     wire [11:0] ex_alu_op;
+    wire [4:0] ex_tlb_op;
 
     wire		ex_div_enable;
     wire		ex_div_signed;
@@ -1065,6 +1328,13 @@ module core #
     wire ex_wb_forward;
 
     wire ex_mem_op;
+
+    wire ex_tlbsrch_op;
+    wire ex_tlbrd_op;
+    wire ex_tlbwr_op;
+    wire ex_tlbfill_op;
+    wire ex_invtlb_valid;
+    wire [4:0] ex_invtlb_op;
 
     assign ex_mul_signed = ex_reg[215];
     assign ex_mul_hres = ex_reg[216];
@@ -1116,6 +1386,13 @@ module core #
     assign ex_res_from_timer = ex_reg[316];
     assign ex_timer_op = ex_reg[317];
     assign ex_mem_op = ex_reg[318];
+
+    assign ex_tlbsrch_op = ex_reg[319];
+    assign ex_tlbrd_op = ex_reg[320];
+    assign ex_tlbwr_op = ex_reg[321];
+    assign ex_tlbfill_op = ex_reg[322];
+    assign ex_invtlb_valid = ex_reg[323];
+    assign ex_invtlb_op = ex_reg[328:324];
 
     // mem stage
     wire mem_allowin;
@@ -1174,6 +1451,10 @@ module core #
             mem_reg[236:205] <= ex_csr_wvalue;
             mem_reg[237] <= ex_inst_csr;
             mem_reg[238] <= ex_mem_op;
+
+            mem_reg[239] <= ex_tlbrd_op;
+            mem_reg[240] <= ex_tlbwr_op;
+            mem_reg[241] <= ex_tlbfill_op;
         end
     end
 
@@ -1215,6 +1496,10 @@ module core #
 
     wire mem_mem_op;
 
+    wire mem_tlbrd_op;
+    wire mem_tlbwr_op;
+    wire mem_tlbfill_op;
+
 
     assign mem_pc = mem_reg[31:0];
     assign mem_inst = mem_reg[63:32];
@@ -1253,6 +1538,10 @@ module core #
     assign mem_inst_csr = mem_reg[237];
 
     assign mem_mem_op = mem_reg[238];
+
+    assign mem_tlbrd_op = mem_reg[239];
+    assign mem_tlbwr_op = mem_reg[240];
+    assign mem_tlbfill_op = mem_reg[241];
 
     // wb stage
     wire out_allow = 1;
@@ -1306,6 +1595,10 @@ module core #
             wb_reg[230] <= mem_csr_we;
             wb_reg[262:231] <= mem_csr_wvalue;
             wb_reg[263] <= mem_inst_csr;
+
+            wb_reg[264] <= mem_tlbrd_op;
+            wb_reg[265] <= mem_tlbwr_op;
+            wb_reg[266] <= mem_tlbfill_op;
         end
     end
     assign validout = wb_valid && wb_ready_go ; // not defined
@@ -1343,6 +1636,10 @@ module core #
     wire wb_csr_we;
     wire [31:0] wb_csr_wvalue;
 
+    wire wb_tlbrd_op;
+    wire wb_tlbwr_op;
+    wire wb_tlbfill_op;
+
     assign wb_pc = wb_reg[31:0];
     assign wb_inst = wb_reg[63:32];
     assign wb_gr_we = wb_reg[64];
@@ -1378,6 +1675,11 @@ module core #
     assign wb_csr_we = wb_reg[230];
     assign wb_csr_wvalue = wb_reg[262:231];
     assign wb_inst_csr = wb_reg[263];
+
+    /*------tlb指令信号------*/
+    assign wb_tlbrd_op = wb_reg[264];
+    assign wb_tlbwr_op = wb_reg[265];
+    assign wb_tlbfill_op = wb_reg[266];
 
 
 endmodule

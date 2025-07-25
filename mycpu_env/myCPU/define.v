@@ -70,32 +70,66 @@
 
 
 `define CSR_TLBIDX 16
-
+`define CSR_TLBIDX_INDEX 15:0
+`define CSR_TLBIDX_PS 29:24
+`define CSR_TLBIDX_NE 31
 
 `define CSR_TLBEHI 17
-
+`define CSR_TLBEHI_VPPN 31:13
 
 `define CSR_TLBELO0 18
 `define CSR_TLBELO1 19
 
+`define CSR_TLBELO0_V 0
+`define CSR_TLBELO0_D 1
+`define CSR_TLBELO0_PLV 3:2
+`define CSR_TLBELO0_MAT 5:4
+`define CSR_TLBELO0_G 6
+`define CSR_TLBELO0_PPN 27:8
+
+
+`define CSR_TLBELO1_V 0
+`define CSR_TLBELO1_D 1
+`define CSR_TLBELO1_PLV 3:2
+`define CSR_TLBELO1_MAT 5:4
+`define CSR_TLBELO1_G 6
+`define CSR_TLBELO1_PPN 27:8
 
 `define CSR_ASID 24
+`define CSR_ASID_ASID 9:0
+`define CSR_ASID_ASIDBITS 23:16
 
 
 `define CSR_PGDL 25
-
+`define CSR_PGDL_BASE 31:12
 
 `define CSR_PGDH 26
+`define CSR_PGDH_BASE 31:12
 
 
 `define CSR_PGD 27
+`define CSR_PGD_BASE 31:12
 
 
 `define CSR_TLBRENTRY 136
+`define CSR_TLBRENTRY_PA 31:6
 
 
 `define CSR_DMW0 384
 `define CSR_DMW1 385
+
+`define CSR_DMW0_PLV0 0
+`define CSR_DMW0_PLV3 3
+`define CSR_DMW0_MAT 5:4
+`define CSR_DMW0_PSEG 27:25
+`define CSR_DMW0_VSEG 31:29
+
+
+`define CSR_DMW1_PLV0 0
+`define CSR_DMW1_PLV3 3
+`define CSR_DMW1_MAT 5:4
+`define CSR_DMW1_PSEG 27:25
+`define CSR_DMW1_VSEG 31:29
 
 
 `define CSR_TID 64
