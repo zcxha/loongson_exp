@@ -307,6 +307,12 @@ module core #
 
     wire [31:0] inst_sram_vaddr = pref_adef ? 32'h1c000000 : pc;
 
+    // input dec
+    wire [18:0] s0_vppn;
+    wire s0_va_bit12;
+    wire [9:0] s0_asid;
+
+
     /*------MMU------*/
 
     // 直接地址翻译部件
@@ -720,6 +726,63 @@ module core #
     assign ex_has_exception = ex_valid & (ex_ale | ex_pref_adef | ex_id_ine | ex_id_break | ex_id_syscall | ex_id_has_int | ex_id_ertn_flush | ex_pref_tlbr | ex_pref_pif | ex_pref_ppi | ex_tlbr | ex_pil | ex_pis | ex_ppi | ex_pme);
 
 
+    /*T L B*/
+    // output declaration of module tlb
+    wire s0_found;
+    wire [3:0] s0_index;
+    wire [19:0] s0_ppn;
+    wire [5:0] s0_ps;
+    wire [1:0] s0_plv;
+    wire [1:0] s0_mat;
+    wire s0_d;
+    wire s0_v;
+    wire s1_found;
+    wire [3:0] s1_index;
+    wire [19:0] s1_ppn;
+    wire [5:0] s1_ps;
+    wire [1:0] s1_plv;
+    wire [1:0] s1_mat;
+    wire s1_d;
+    wire s1_v;
+    wire r_e;
+    wire [18:0] r_vppn;
+    wire [5:0] r_ps;
+    wire [9:0] r_asid;
+    wire r_g;
+    wire [19:0] r_ppn0;
+    wire [1:0] r_plv0;
+    wire [1:0] r_mat0;
+    wire r_d0;
+    wire r_v0;
+    wire [19:0] r_ppn1;
+    wire [1:0] r_plv1;
+    wire [1:0] r_mat1;
+    wire r_d1;
+    wire r_v1;
+
+
+    wire [18:0] s1_vppn;
+    wire s1_va_bit12;
+    wire [9:0] s1_asid;
+
+    wire [3:0] w_index;
+    wire w_e;
+    wire [18:0] w_vppn;
+    wire [5:0] w_ps;
+    wire [9:0] w_asid;
+    wire w_g;
+    wire [19:0] w_ppn0;
+    wire [1:0] w_plv0;
+    wire [1:0] w_mat0;
+    wire w_d0;
+    wire w_v0;
+    wire [19:0] w_ppn1;
+    wire [1:0] w_plv1;
+    wire [1:0] w_mat1;
+    wire w_d1;
+    wire w_v1;
+
+
     /*------MMU Unit------*/
     wire [31:0] data_sram_vaddr = EX_result & 32'hFFFF_FFFC;
 
@@ -747,7 +810,7 @@ module core #
     wire ex_pil = out_crmd_pg ? !s1_v && ex_op_load && !ex_tlbr : 0;
     wire ex_pis = out_crmd_pg ? !s1_v && ex_op_store && !ex_tlbr : 0;
     wire ex_ppi = out_crmd_pg ? (out_crmd_plv > s1_plv) && ex_mem_op && !ex_tlbr && !ex_pil && !ex_pis: 0;
-    wire ex_pme = out_crmd_pg ? ex_op_store && !s1_d && !ex_tlbr && !ex_pil && !ex_pis && !ex_ppi && !ex_pme: 0;
+    wire ex_pme = out_crmd_pg ? ex_op_store && !s1_d && !ex_tlbr && !ex_pil && !ex_pis && !ex_ppi: 0;
     wire ex_has_addr_exception = ex_tlbr | ex_pil | ex_pis | ex_ppi | ex_pme;
 
     // MUX
@@ -866,66 +929,6 @@ module core #
     assign in_tlbelo0 = tlbrd_tlbelo0;
     assign in_tlbelo1 = tlbrd_tlbelo1;
     assign in_tlbidx_ps = tlbrd_tlbidx_ps;
-
-    /*T L B*/
-    // output declaration of module tlb
-    wire s0_found;
-    wire [3:0] s0_index;
-    wire [19:0] s0_ppn;
-    wire [5:0] s0_ps;
-    wire [1:0] s0_plv;
-    wire [1:0] s0_mat;
-    wire s0_d;
-    wire s0_v;
-    wire s1_found;
-    wire [3:0] s1_index;
-    wire [19:0] s1_ppn;
-    wire [5:0] s1_ps;
-    wire [1:0] s1_plv;
-    wire [1:0] s1_mat;
-    wire s1_d;
-    wire s1_v;
-    wire r_e;
-    wire [18:0] r_vppn;
-    wire [5:0] r_ps;
-    wire [9:0] r_asid;
-    wire r_g;
-    wire [19:0] r_ppn0;
-    wire [1:0] r_plv0;
-    wire [1:0] r_mat0;
-    wire r_d0;
-    wire r_v0;
-    wire [19:0] r_ppn1;
-    wire [1:0] r_plv1;
-    wire [1:0] r_mat1;
-    wire r_d1;
-    wire r_v1;
-
-    // input dec
-    wire [18:0] s0_vppn;
-    wire s0_va_bit12;
-    wire [9:0] s0_asid;
-
-    wire [18:0] s1_vppn;
-    wire s1_va_bit12;
-    wire [9:0] s1_asid;
-
-    wire [3:0] w_index;
-    wire w_e;
-    wire [18:0] w_vppn;
-    wire [5:0] w_ps;
-    wire [9:0] w_asid;
-    wire w_g;
-    wire [19:0] w_ppn0;
-    wire [1:0] w_plv0;
-    wire [1:0] w_mat0;
-    wire w_d0;
-    wire w_v0;
-    wire [19:0] w_ppn1;
-    wire [1:0] w_plv1;
-    wire [1:0] w_mat1;
-    wire w_d1;
-    wire w_v1;
 
     tlb #(
             .TLBNUM 	(16  ))

@@ -534,8 +534,8 @@ module csr_reg(
     wire [31:0] csr_pgdh_rvalue = {csr_pgdh_base,12'b0};
     wire [31:0] csr_pgd_rvalue = csr_badv_vaddr[31] ? csr_pgdh_rvalue : csr_pgdl_rvalue;
     wire [31:0] csr_tlbrentry_rvalue = {csr_tlbrentry_pa,6'b0};
-    wire [31:0] csr_dmw0_rvalue = {csr_dmw0_vseg,1'b0,csr_dmw0_pseg,1'b0,csr_dmw0_mat,csr_dmw0_plv3,2'b0,csr_dmw0_plv0};
-    wire [31:0] csr_dmw1_rvalue = {csr_dmw1_vseg,1'b0,csr_dmw1_pseg,1'b0,csr_dmw1_mat,csr_dmw1_plv3,2'b0,csr_dmw1_plv0};
+    wire [31:0] csr_dmw0_rvalue = {csr_dmw0_vseg,1'b0,csr_dmw0_pseg,19'b0,csr_dmw0_mat,csr_dmw0_plv3,2'b0,csr_dmw0_plv0};
+    wire [31:0] csr_dmw1_rvalue = {csr_dmw1_vseg,1'b0,csr_dmw1_pseg,19'b0,csr_dmw1_mat,csr_dmw1_plv3,2'b0,csr_dmw1_plv0};
 
     assign csr_rvalue = {32{csr_num==`CSR_CRMD}} & csr_crmd_rvalue
            | {32{csr_num==`CSR_PRMD}} & csr_prmd_rvalue
