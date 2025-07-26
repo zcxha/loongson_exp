@@ -327,13 +327,14 @@ module core #
          {out_dmw1[`CSR_DMW1_PSEG],inst_sram_vaddr[28:0]}: // 特权等级不合规相当于不命中，只进入页表映射模式，不在此时发出异常
          inst_sram_vaddr ;
     // TLB地址翻译部件
+	wire inst_use_tlb = out_crmd_pg && !inst_hit_dmw0 && !inst_hit_dmw1;
     assign {s0_vppn,s0_va_bit12} = inst_sram_vaddr[31:12];
     assign s0_asid = out_asid_asid;
     wire [31:0] inst_sram_tlbaddr = {s0_ppn,inst_sram_vaddr[11:0]};
     // 异常
-    wire pref_tlbr = out_crmd_pg ? ~s0_found : 0;
-    wire pref_pif = out_crmd_pg ? ~s0_v : 0;
-    wire pref_ppi = out_crmd_pg ? out_crmd_plv > s0_plv : 0;
+    wire pref_tlbr = out_crmd_pg ? ~s0_found && inst_use_tlb: 0;
+    wire pref_pif = out_crmd_pg ? ~s0_v && !pref_tlbr && inst_use_tlb: 0;
+    wire pref_ppi = out_crmd_pg ? (out_crmd_plv > s0_plv) && !pref_tlbr && !pref_pif && inst_use_tlb: 0;
     wire pref_has_exception = pref_adef | pref_tlbr | pref_pif | pref_ppi;
 
     // MUX
@@ -806,11 +807,12 @@ module core #
     wire [31:0] data_sram_tlbaddr = {s1_ppn,data_sram_vaddr[11:0]};
 
     // 异常  tlbr > pi* > ppi > pme
-    wire ex_tlbr = out_crmd_pg ? !s1_found && ex_mem_op : 0;
-    wire ex_pil = out_crmd_pg ? !s1_v && ex_op_load && !ex_tlbr : 0;
-    wire ex_pis = out_crmd_pg ? !s1_v && ex_op_store && !ex_tlbr : 0;
-    wire ex_ppi = out_crmd_pg ? (out_crmd_plv > s1_plv) && ex_mem_op && !ex_tlbr && !ex_pil && !ex_pis: 0;
-    wire ex_pme = out_crmd_pg ? ex_op_store && !s1_d && !ex_tlbr && !ex_pil && !ex_pis && !ex_ppi: 0;
+	wire data_use_tlb = out_crmd_pg && !data_hit_dmw0 && !data_hit_dmw1;
+    wire ex_tlbr = out_crmd_pg ? !s1_found && ex_mem_op && data_use_tlb : 0;
+    wire ex_pil = out_crmd_pg ? !s1_v && ex_op_load && !ex_tlbr && data_use_tlb: 0;
+    wire ex_pis = out_crmd_pg ? !s1_v && ex_op_store && !ex_tlbr && data_use_tlb: 0;
+    wire ex_ppi = out_crmd_pg ? (out_crmd_plv > s1_plv) && ex_mem_op && !ex_tlbr && !ex_pil && !ex_pis && data_use_tlb: 0;
+    wire ex_pme = out_crmd_pg ? ex_op_store && !s1_d && !ex_tlbr && !ex_pil && !ex_pis && !ex_ppi && data_use_tlb: 0;
     wire ex_has_addr_exception = ex_tlbr | ex_pil | ex_pis | ex_ppi | ex_pme;
 
     // MUX
