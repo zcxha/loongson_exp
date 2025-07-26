@@ -42,6 +42,7 @@ module csr_reg(
 
 		output wire out_crmd_da,
 		output wire out_crmd_pg,
+		output wire [1:0] out_crmd_plv,
 		output wire [31:0] out_dmw0,
 		output wire [31:0] out_dmw1,
         output wire [3:0] out_tlbidx_index,
@@ -66,12 +67,16 @@ module csr_reg(
 	assign out_tlbidx_ps = csr_tlbidx_ps;
 	assign out_tlbidx_ne = csr_tlbidx_ne;
 	assign out_estat_ecode = csr_estat_ecode;
-
+	assign out_crmd_da = csr_crmd_da;
+	assign out_crmd_pg = csr_crmd_pg;
+	assign out_dmw0 = csr_dmw0_rvalue;
+	assign out_dmw1 = csr_dmw1_rvalue;
+	assign out_crmd_plv = csr_crmd_plv;
 
     /**硬件接口逻辑**/
     assign has_int = ((csr_estat_is[12:0] & csr_ecfg_lie[12:0]) != 13'b0) && (csr_crmd_ie == 1'b1);
 
-    assign ex_entry = wb_ex ? csr_eentry_rvalue : wb_pc;
+    assign ex_entry = wb_ex ? (wb_ecode==`ECODE_TLBR ? csr_tlbrentry_rvalue : csr_eentry_rvalue) : wb_pc;
 
     assign ertn_pc = csr_era_rvalue;
 
@@ -88,19 +93,24 @@ module csr_reg(
         if (reset) begin
             csr_crmd_plv <= 2'b0;
             csr_crmd_ie <= 1'b0;
-            // TODO: MMU间接地址翻译尚未实现
             csr_crmd_da <= 1'b1;
             csr_crmd_pg <= 1'b0;
             csr_crmd_datf <= 2'b0;
             csr_crmd_datm <= 2'b0;
         end
         else if (wb_ex) begin
+			if (wb_ecode==`ECODE_TLBR) begin
+				csr_crmd_da <= 1;
+				csr_crmd_pg <= 0;
+			end
             csr_crmd_plv <= 2'b0;
             csr_crmd_ie <= 1'b0;
         end
         else if (ertn_flush) begin
             csr_crmd_plv <= csr_prmd_pplv;
             csr_crmd_ie <= csr_prmd_pie;
+			csr_crmd_da <= csr_estat_ecode==`ECODE_TLBR ? 0 : csr_crmd_da;
+			csr_crmd_pg <= csr_estat_ecode==`ECODE_TLBR ? 1 : csr_crmd_pg;
         end
         else if (csr_we && csr_num==`CSR_CRMD) begin
             csr_crmd_plv <= csr_wmask[`CSR_CRMD_PLV]&csr_wvalue[`CSR_CRMD_PLV]
@@ -194,12 +204,12 @@ module csr_reg(
 
     /***BADV registers***/
     reg [31:0] csr_badv_vaddr;
-    assign wb_ex_addr_err = wb_ecode==`ECODE_ADE || wb_ecode==`ECODE_ALE;
+    assign wb_ex_addr_err = wb_ecode==`ECODE_ADE || wb_ecode==`ECODE_ALE || wb_ecode==`ECODE_PIL || wb_ecode==`ECODE_PIS || wb_ecode==`ECODE_PIF || wb_ecode==`ECODE_PME || wb_ecode==`ECODE_PPI || wb_ecode==`ECODE_TLBR;
 
     always @(posedge clk) begin
         if (wb_ex && wb_ex_addr_err)
-            csr_badv_vaddr <= (wb_ecode==`ECODE_ADE &&
-                               wb_esubcode==`ESUBCODE_ADEF) ? wb_pc : wb_vaddr;
+            csr_badv_vaddr <= (wb_ecode==`ECODE_ADE && wb_esubcode==`ESUBCODE_ADEF
+			|| wb_ecode==`ECODE_PIF) ? wb_pc : wb_vaddr;
     end
     /***EENTRY registers***/
     reg [25:0] csr_eentry_va;
@@ -270,10 +280,14 @@ module csr_reg(
 
     /***TLBEHI***/
     reg [18:0] csr_tlbehi_vppn;
+	wire wb_tlbexception = wb_ecode==`ECODE_TLBR || wb_ecode==`ECODE_PIL || wb_ecode==`ECODE_PIF || wb_ecode==`ECODE_PIS || wb_ecode==`ECODE_PME || wb_ecode==`ECODE_PPI;
     always @(posedge clk) begin
         if (csr_we && csr_num==`CSR_TLBEHI)
             csr_tlbehi_vppn <= csr_wmask[`CSR_TLBEHI_VPPN]&csr_wvalue[`CSR_TLBEHI_VPPN]
                             | ~csr_wmask[`CSR_TLBEHI_VPPN]&csr_tlbehi_vppn;
+		else if (wb_ex && wb_tlbexception) begin
+			csr_tlbehi_vppn <= wb_vaddr[31:13];
+		end
         else if (tlbrd_op) begin
             csr_tlbehi_vppn <= in_tlbehi_vppn;
         end
@@ -401,6 +415,12 @@ module csr_reg(
     reg [2:0] csr_dmw1_vseg;
 
     always @(posedge clk) begin
+		if (reset) begin
+			csr_dmw0_plv0 <= 0;
+			csr_dmw0_plv3 <= 0;
+			csr_dmw1_plv0 <= 0;
+			csr_dmw1_plv3 <= 0;
+		end
         if (csr_we && csr_num==`CSR_DMW0) begin
             csr_dmw0_plv0 <= csr_wmask[`CSR_DMW0_PLV0]&csr_wvalue[`CSR_DMW0_PLV0]
                           | ~csr_wmask[`CSR_DMW0_PLV0]&csr_dmw0_plv0;
@@ -512,7 +532,7 @@ module csr_reg(
     wire [31:0] csr_asid_rvalue = {8'b0,csr_asid_asidbits,6'b0,csr_asid_asid};
     wire [31:0] csr_pgdl_rvalue = {csr_pgdl_base,12'b0};
     wire [31:0] csr_pgdh_rvalue = {csr_pgdh_base,12'b0};
-    wire [31:0] csr_pgd_rvalue = {csr_pgd_base,12'b0};
+    wire [31:0] csr_pgd_rvalue = csr_badv_vaddr[31] ? csr_pgdh_rvalue : csr_pgdl_rvalue;
     wire [31:0] csr_tlbrentry_rvalue = {csr_tlbrentry_pa,6'b0};
     wire [31:0] csr_dmw0_rvalue = {csr_dmw0_vseg,1'b0,csr_dmw0_pseg,1'b0,csr_dmw0_mat,csr_dmw0_plv3,2'b0,csr_dmw0_plv0};
     wire [31:0] csr_dmw1_rvalue = {csr_dmw1_vseg,1'b0,csr_dmw1_pseg,1'b0,csr_dmw1_mat,csr_dmw1_plv3,2'b0,csr_dmw1_plv0};

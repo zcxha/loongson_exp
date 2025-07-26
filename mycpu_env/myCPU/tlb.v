@@ -106,6 +106,9 @@ module tlb #(
             tlb_d1[w_index] <= w_d1;
             tlb_v1[w_index] <= w_v1;
         end
+        else if (invtlb_valid) begin
+            tlb_e <= ~inv_match & tlb_e;
+        end
     end
 
     assign r_e = tlb_e[r_index];
@@ -124,8 +127,8 @@ module tlb #(
     assign r_d1 = tlb_d1[r_index];
     assign r_v1 = tlb_v1[r_index];
 
-	wire s0_va_bit; // bit21/bit12
-	wire s1_va_bit;
+    wire s0_va_bit; // bit21/bit12
+    wire s1_va_bit;
 
 
     wire [TLBNUM-1:0] match0;
@@ -160,7 +163,7 @@ module tlb #(
            | ({4{match0[4'd14]}} & 4'd14)
            | ({4{match0[4'd15]}} & 4'd15)
            ;
-	assign s0_va_bit = tlb_ps4MB[s0_index] ? s0_vppn[8] : s0_va_bit12;
+    assign s0_va_bit = tlb_ps4MB[s0_index] ? s0_vppn[8] : s0_va_bit12;
     assign s0_ps  = (tlb_ps4MB[s0_index] ? 6'd21 : 6'd12);
     assign s0_ppn = s0_va_bit ? tlb_ppn1[s0_index] : tlb_ppn0[s0_index];
     assign s0_plv = s0_va_bit ? tlb_plv1[s0_index] : tlb_plv0[s0_index];
@@ -187,7 +190,7 @@ module tlb #(
            | ({4{match1[4'd14]}} & 4'd14)
            | ({4{match1[4'd15]}} & 4'd15)
            ;
-	assign s1_va_bit = tlb_ps4MB[s1_index] ? s1_vppn[8] : s1_va_bit12;
+    assign s1_va_bit = tlb_ps4MB[s1_index] ? s1_vppn[8] : s1_va_bit12;
     assign s1_ps  = (tlb_ps4MB[s1_index] ? 6'd21 : 6'd12);
     assign s1_ppn = s1_va_bit ? tlb_ppn1[s1_index] : tlb_ppn0[s1_index];
     assign s1_plv = s1_va_bit ? tlb_plv1[s1_index] : tlb_plv0[s1_index];
@@ -218,11 +221,5 @@ module tlb #(
                    || (invtlb_op==5'h6) && (cond2[i] || cond3[i]) && cond4[i];
         end
     endgenerate
-
-    always @(posedge clk) begin
-        if (invtlb_valid) begin
-            tlb_e <= ~inv_match & tlb_e;
-        end
-    end
 
 endmodule

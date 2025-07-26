@@ -55,7 +55,6 @@ module core #
     wire		pref_adef;
 
     wire [11:0] alu_op;
-    wire        load_op;
     wire		tlbsrch_op;
     wire		tlbrd_op;
     wire		tlbwr_op;
@@ -237,7 +236,7 @@ module core #
     // assign inst_sram_req = (op_br_compare && ex_valid ? br_valid : 1) && if_allowin && resetn;
 
     assign seq_pc       = ~if_allowin ? pc : pc + 32'h4;
-    assign nextpc = (wb_valid && (wb_has_exception || wb_id_ertn_flush)) ? ( {32{wb_has_exception}} & wb_ex_entry | {32{wb_id_ertn_flush}}   & wb_ertn_pc ) :
+    assign nextpc = (wb_valid && (wb_has_exception || wb_id_ertn_flush || wb_pref_refetch)) ? ( {32{wb_has_exception}} & wb_ex_entry | {32{wb_id_ertn_flush}}   & wb_ertn_pc | {32{wb_pref_refetch}} & wb_pc) :
            (br_taken_cancel) ? br_target :
            seq_pc;
     assign pref_adef	= ((pc & 2'b11) != 2'b00);
@@ -251,10 +250,18 @@ module core #
             exception_cancel_flag <= 0;
             cached_npc <= 32'b0;
         end
-        if (wb_has_exception || wb_id_ertn_flush) begin
+        if (wb_has_exception || wb_id_ertn_flush || wb_pref_refetch) begin
             exception_cancel_flag <= 1;
             cached_npc <= nextpc; // 异常处理程序入口
         end
+		else if ((if_allowin && inst_sram_req == 0) && !waiting_for_inst) begin
+			if (exception_cancel_flag) begin
+				exception_cancel_flag <= 0;
+			end
+			else if (cancel_inst) begin
+				cancel_inst <= 0;
+			end
+		end
         else if (br_taken_cancel) begin
             cancel_inst <= 1;
             cached_npc <= nextpc; // 跳转目标
@@ -270,15 +277,13 @@ module core #
             inst_sram_req <= 0;
             pc <= 32'h1bfffffc;     //trick: to make nextpc be 0x1c000000 during reset
         end
-        if ((if_allowin && inst_sram_req == 0) && !waiting_for_inst) begin
+        if ((if_allowin && inst_sram_req == 0) && !waiting_for_inst) begin // TODO: 如果有地址错误则不发出请求
             inst_sram_req <= 1;
             if (exception_cancel_flag) begin
                 pc <= cached_npc;
-                exception_cancel_flag <= 0;
             end
             else if (cancel_inst) begin
                 pc <= cached_npc;
-                cancel_inst <= 0;
             end
             else begin
                 pc <= nextpc;
@@ -293,10 +298,49 @@ module core #
         end
     end
 
+    wire pref_refetch = //out_crmd_pg &&
+	// 流水线中有写 DA PG DMW0 DMW1 ASID 即CSRWR 这些 以及TLBRD  TODO:在PG翻译模式下才判断
+         (id_valid&&(csr_we&&(csr==`CSR_CRMD || csr==`CSR_CRMD || csr==`CSR_DMW0 || csr==`CSR_DMW1 || csr==`CSR_ASID) || tlbrd_op || tlbwr_op || tlbfill_op || invtlb_valid )
+         || ex_valid&&(ex_csr_we&&(ex_csr==`CSR_CRMD || ex_csr==`CSR_CRMD || ex_csr==`CSR_DMW0 || ex_csr==`CSR_DMW1 || ex_csr==`CSR_ASID) || ex_tlbrd_op || ex_tlbwr_op || ex_tlbfill_op || ex_invtlb_valid)
+         || mem_valid&&(mem_csr_we&&(mem_csr==`CSR_CRMD || mem_csr==`CSR_CRMD || mem_csr==`CSR_DMW0 || mem_csr==`CSR_DMW1 || mem_csr==`CSR_ASID) || mem_tlbrd_op || mem_tlbwr_op || mem_tlbfill_op || mem_invtlb_valid) // invtlb在ex段执行完，那么在ex之后就应该触发重取指 此处为了简化设计都是在WB段触发重取指
+         || wb_valid&&(wb_csr_we&&(wb_csr_num==`CSR_CRMD || wb_csr_num==`CSR_CRMD || wb_csr_num==`CSR_DMW0 || wb_csr_num==`CSR_DMW1 || wb_csr_num==`CSR_ASID) || wb_tlbrd_op || wb_tlbwr_op || wb_tlbfill_op || wb_invtlb_valid));
+
+    wire [31:0] inst_sram_vaddr = pref_adef ? 32'h1c000000 : pc;
+
+    /*------MMU------*/
+
+    // 直接地址翻译部件
+    wire [31:0] inst_sram_daddr = inst_sram_vaddr;
+    // 直接映射窗口地址翻译部件
+    wire inst_hit_dmw0 =inst_sram_vaddr[31:29]==out_dmw0[`CSR_DMW0_VSEG]&&(out_crmd_plv==2'b00 && out_dmw0[`CSR_DMW0_PLV0] || out_crmd_plv==2'b11 && out_dmw0[`CSR_DMW0_PLV3]);
+    wire inst_hit_dmw1 = inst_sram_vaddr[31:29]==out_dmw1[`CSR_DMW1_VSEG]&&(out_crmd_plv==2'b00 && out_dmw1[`CSR_DMW1_PLV0] || out_crmd_plv==2'b11 && out_dmw1[`CSR_DMW1_PLV3]);
+    wire [31:0] inst_sram_dmwaddr =
+         inst_hit_dmw0?
+         {out_dmw0[`CSR_DMW0_PSEG],inst_sram_vaddr[28:0]}:
+         inst_hit_dmw1?
+         {out_dmw1[`CSR_DMW1_PSEG],inst_sram_vaddr[28:0]}: // 特权等级不合规相当于不命中，只进入页表映射模式，不在此时发出异常
+         inst_sram_vaddr ;
+    // TLB地址翻译部件
+    assign {s0_vppn,s0_va_bit12} = inst_sram_vaddr[31:12];
+    assign s0_asid = out_asid_asid;
+    wire [31:0] inst_sram_tlbaddr = {s0_ppn,inst_sram_vaddr[11:0]};
+    // 异常
+    wire pref_tlbr = out_crmd_pg ? ~s0_found : 0;
+    wire pref_pif = out_crmd_pg ? ~s0_v : 0;
+    wire pref_ppi = out_crmd_pg ? out_crmd_plv > s0_plv : 0;
+    wire pref_has_exception = pref_adef | pref_tlbr | pref_pif | pref_ppi;
+
+    // MUX
+    wire [31:0] inst_sram_paddr;
+    assign inst_sram_paddr = out_crmd_da ? inst_sram_daddr :
+           inst_hit_dmw0 || inst_hit_dmw1 ? inst_sram_dmwaddr :
+           inst_sram_tlbaddr;
+
+
     assign inst_sram_wr = 0;
     assign inst_sram_size = 2'h2;
     assign inst_sram_wstrb    = 4'b0;
-    assign inst_sram_addr  = pref_adef ? 32'h1c000000 : pc; // 发生取指地址错时将PC置默认值
+    assign inst_sram_addr  = inst_sram_paddr; // 发生取指地址错时将PC置默认值
     assign inst_sram_wdata = 32'b0;
 
     /*------IF------*/
@@ -419,8 +463,8 @@ module core #
     assign inst_tlbfill = op_31_26_d[6'h01] & op_25_22_d[4'h9] & op_21_20_d[2'h0] & op_19_15_d[5'h10] & op_14_10_d[5'h0d] & op_09_05_d[5'h00] & op_04_00_d[5'h00];
     assign inst_invtlb = op_31_26_d[6'h01] & op_25_22_d[4'h9] & op_21_20_d[2'h0] & op_19_15_d[5'h13];
 
-	wire invtlb_op_inv;
-	assign invtlb_op_inv = (rd[4:3] != 2'b00 || rd == 5'b00111) && inst_invtlb; // op > 6
+    wire invtlb_op_inv;
+    assign invtlb_op_inv = (rd[4:3] != 2'b00 || rd == 5'b00111) && inst_invtlb; // op > 6
     assign {tlbsrch_op,tlbrd_op,tlbwr_op,tlbfill_op,invtlb_valid} = {inst_tlbsrch,inst_tlbrd,inst_tlbwr,inst_tlbfill,inst_invtlb & ~invtlb_op_inv};
     assign invtlb_op = rd;
 
@@ -477,6 +521,8 @@ module core #
     assign op_st_b = inst_st_b;
     assign op_st_h = inst_st_h;
     assign op_st_w = inst_st_w;
+    wire op_store = inst_st_b | inst_st_h | inst_st_w;
+    wire op_load = inst_ld_w | inst_ld_h | inst_ld_hu | inst_ld_b | inst_ld_bu;
 
     assign need_ui5   =  inst_slli_w | inst_srli_w | inst_srai_w;
     assign need_ui12  =  inst_andi | inst_ori | inst_xori;
@@ -630,7 +676,7 @@ module core #
     div u_div(
             .div_clk		(clk		),
             .resetn			(resetn			),
-            .div			(ex_div_enable & ~(mem_has_exception | wb_has_exception | ex_has_exception)			),
+            .div			(ex_div_enable & ~(mem_has_exception | wb_has_exception | ex_has_exception | mem_pref_refetch | wb_pref_refetch | ex_pref_refetch)			),
             .div_signed		(ex_div_signed				),
             .x				(ex_alu_src1		),
             .y				(ex_alu_src2			),
@@ -669,17 +715,54 @@ module core #
            ex_op_st_h ? (EX_result[1:0]==2'b00 ? 4'b0011 :
                          4'b1100) :
            {4{ex_op_st_w}};
-    assign id_has_exception = id_valid & (id_pref_adef | id_ine | id_break | id_syscall | id_has_int | id_ertn_flush);
-    assign mem_has_exception = mem_valid & (mem_pref_adef | mem_ex_ale | mem_id_ine | mem_id_break | mem_id_syscall | mem_id_has_int | mem_id_ertn_flush);
-    assign ex_has_exception = ex_valid & (ex_ale | ex_pref_adef | ex_id_ine | ex_id_break | ex_id_syscall | ex_id_has_int | ex_id_ertn_flush);
+    assign id_has_exception = id_valid & (id_pref_adef | id_ine | id_break | id_syscall | id_has_int | id_ertn_flush | id_pref_tlbr | id_pref_pif | id_pref_ppi);
+    assign mem_has_exception = mem_valid & (mem_pref_adef | mem_ex_ale | mem_id_ine | mem_id_break | mem_id_syscall | mem_id_has_int | mem_id_ertn_flush | mem_pref_tlbr | mem_pref_pif | mem_pref_ppi | mem_ex_tlbr | mem_ex_pil | mem_ex_pis | mem_ex_ppi | mem_ex_pme);
+    assign ex_has_exception = ex_valid & (ex_ale | ex_pref_adef | ex_id_ine | ex_id_break | ex_id_syscall | ex_id_has_int | ex_id_ertn_flush | ex_pref_tlbr | ex_pref_pif | ex_pref_ppi | ex_tlbr | ex_pil | ex_pis | ex_ppi | ex_pme);
+
+
+    /*------MMU Unit------*/
+    wire [31:0] data_sram_vaddr = EX_result & 32'hFFFF_FFFC;
+
+    // 直接地址翻译部件
+    wire [31:0] data_sram_daddr = data_sram_vaddr;
+
+    // 直接映射
+    wire data_hit_dmw0 = data_sram_vaddr[31:29]==out_dmw0[`CSR_DMW0_VSEG]&&(out_crmd_plv==2'b00 && out_dmw0[`CSR_DMW0_PLV0] || out_crmd_plv==2'b11 && out_dmw0[`CSR_DMW0_PLV3]);
+    wire data_hit_dmw1 = data_sram_vaddr[31:29]==out_dmw1[`CSR_DMW1_VSEG]&&(out_crmd_plv==2'b00 && out_dmw1[`CSR_DMW1_PLV0] || out_crmd_plv==2'b11 && out_dmw1[`CSR_DMW1_PLV3]);
+    wire [31:0] data_sram_dmwaddr =
+         data_hit_dmw0?{out_dmw0[`CSR_DMW0_PSEG],data_sram_vaddr[28:0]}:
+         data_hit_dmw1?{out_dmw1[`CSR_DMW1_PSEG],data_sram_vaddr[28:0]}:
+         data_sram_vaddr ;
+
+    // 页表映射
+    assign s1_vppn = ex_tlbsrch_op ? out_tlbehi_vppn : (ex_invtlb_valid ? invtlb_va[31:13] : data_sram_vaddr[31:13]); // data vppn MUX
+    assign s1_va_bit12 = ex_mem_op ? data_sram_vaddr[12] : 0;
+    assign s1_asid = ex_invtlb_valid ? invtlb_asid :
+           // ex_tlbsrch_op/ex_mem_op
+           out_asid_asid;
+    wire [31:0] data_sram_tlbaddr = {s1_ppn,data_sram_vaddr[11:0]};
+
+    // 异常  tlbr > pi* > ppi > pme
+    wire ex_tlbr = out_crmd_pg ? !s1_found && ex_mem_op : 0;
+    wire ex_pil = out_crmd_pg ? !s1_v && ex_op_load && !ex_tlbr : 0;
+    wire ex_pis = out_crmd_pg ? !s1_v && ex_op_store && !ex_tlbr : 0;
+    wire ex_ppi = out_crmd_pg ? (out_crmd_plv > s1_plv) && ex_mem_op && !ex_tlbr && !ex_pil && !ex_pis: 0;
+    wire ex_pme = out_crmd_pg ? ex_op_store && !s1_d && !ex_tlbr && !ex_pil && !ex_pis && !ex_ppi && !ex_pme: 0;
+    wire ex_has_addr_exception = ex_tlbr | ex_pil | ex_pis | ex_ppi | ex_pme;
+
+    // MUX
+    wire [31:0] data_sram_paddr;
+    assign data_sram_paddr = out_crmd_da ? data_sram_daddr :
+           (data_hit_dmw0 || data_hit_dmw1) ? data_sram_dmwaddr :
+           data_sram_tlbaddr;
 
     // assign data_sram_req = ex_mem_op && mem_allowin;
-    assign data_sram_wr = (ex_op_st_b | ex_op_st_h | ex_op_st_w) && (!wb_has_exception && !mem_has_exception && !ex_has_exception) && ex_valid; // 如果其或者其后的流水段发生异常，则停止写ram
+    assign data_sram_wr = (ex_op_st_b | ex_op_st_h | ex_op_st_w) && (!wb_pref_refetch && !mem_pref_refetch && !ex_pref_refetch && !wb_has_exception && !mem_has_exception && !ex_has_exception) && ex_valid; // 如果其或者其后的流水段发生异常，则停止写ram
     assign data_sram_size = (ex_mem_byte) ? 2'b00 :
            (ex_mem_half) ? 2'b01 : // 写传输size=4靠写掩码写位 读定义传输size
            2'b10;
     assign data_sram_wstrb    = mem_we & {4{valid}};
-    assign data_sram_addr  = EX_result & 32'hFFFF_FFFC;
+    assign data_sram_addr  = data_sram_paddr;
     assign data_sram_wdata = ex_op_st_b ? {4{ex_rkd_value[7:0]}} :
            ex_op_st_h ? {2{ex_rkd_value[15:0]}} :
            ex_rkd_value;
@@ -690,7 +773,7 @@ module core #
             data_sram_req <= 0;
             waiting_for_data <= 0;
         end
-        if (ex_valid && ex_mem_op && mem_allowin && !waiting_for_data) begin
+        if (ex_valid && ex_mem_op && mem_allowin && !waiting_for_data) begin // TODO:不发出产生地址异常的请求
             data_sram_req <= 1;
         end
         if (data_sram_addr_ok && data_sram_req) begin
@@ -703,6 +786,11 @@ module core #
     end
 
 
+    wire out_crmd_da;
+    wire out_crmd_pg;
+    wire [1:0] out_crmd_plv;
+    wire [31:0] out_dmw0;
+    wire [31:0] out_dmw1;
     wire [9:0] out_asid_asid;
     wire [18:0] out_tlbehi_vppn;
     wire [3:0] out_tlbidx_index;
@@ -723,14 +811,8 @@ module core #
     wire [3:0] tlbsrch_tlbidx_index;
     wire tlbsrch_tlbidx_ne;
 
-    assign s1_vppn = ex_tlbsrch_op ? out_tlbehi_vppn : 
-					ex_invtlb_valid ? invtlb_va[31:13] : 0; // data vppn MUX
-    assign s1_va_bit12 = 0;
-    assign s1_asid = ex_tlbsrch_op ? out_asid_asid : 
-					ex_invtlb_valid ? invtlb_asid : 
-					0; // data asid MUX 或许数据访问时可以优化成inv_asid与out_asid的二选一？ :TODO
 
-    assign tlbsrch_tlbidx_index = s1_found ? s1_index : out_tlbidx_index;
+    assign tlbsrch_tlbidx_index = s1_found ? {12'b0,s1_index} : out_tlbidx_index;
     assign tlbsrch_tlbidx_ne = s1_found ? 0 : 1;
 
     // WB tlbrd
@@ -771,8 +853,8 @@ module core #
             out_tlbelo1[`CSR_TLBELO1_V]};
 
     // EX invtlb
-	wire [9:0] invtlb_asid;
-	wire [31:0] invtlb_va;
+    wire [9:0] invtlb_asid;
+    wire [31:0] invtlb_va;
     assign invtlb_asid = ex_rj_value[9:0];
     assign invtlb_va = ex_rkd_value;
 
@@ -788,7 +870,7 @@ module core #
     /*T L B*/
     // output declaration of module tlb
     wire s0_found;
-    wire [15:0] s0_index;
+    wire [3:0] s0_index;
     wire [19:0] s0_ppn;
     wire [5:0] s0_ps;
     wire [1:0] s0_plv;
@@ -796,7 +878,7 @@ module core #
     wire s0_d;
     wire s0_v;
     wire s1_found;
-    wire [15:0] s1_index;
+    wire [3:0] s1_index;
     wire [19:0] s1_ppn;
     wire [5:0] s1_ps;
     wire [1:0] s1_plv;
@@ -819,31 +901,31 @@ module core #
     wire r_d1;
     wire r_v1;
 
-	// input dec
-	wire [18:0] s0_vppn;
-	wire s0_va_bit12;
-	wire [9:0] s0_asid;
+    // input dec
+    wire [18:0] s0_vppn;
+    wire s0_va_bit12;
+    wire [9:0] s0_asid;
 
-	wire [18:0] s1_vppn;
-	wire s1_va_bit12;
-	wire [9:0] s1_asid;
+    wire [18:0] s1_vppn;
+    wire s1_va_bit12;
+    wire [9:0] s1_asid;
 
-	wire [3:0] w_index;
-	wire w_e;
-	wire [18:0] w_vppn;
-	wire [5:0] w_ps;
-	wire [9:0] w_asid;
-	wire w_g;
-	wire [19:0] w_ppn0;
-	wire [1:0] w_plv0;
-	wire [1:0] w_mat0;
-	wire w_d0;
-	wire w_v0;
-	wire [19:0] w_ppn1;
-	wire [1:0] w_plv1;
-	wire [1:0] w_mat1;
-	wire w_d1;
-	wire w_v1;
+    wire [3:0] w_index;
+    wire w_e;
+    wire [18:0] w_vppn;
+    wire [5:0] w_ps;
+    wire [9:0] w_asid;
+    wire w_g;
+    wire [19:0] w_ppn0;
+    wire [1:0] w_plv0;
+    wire [1:0] w_mat0;
+    wire w_d0;
+    wire w_v0;
+    wire [19:0] w_ppn1;
+    wire [1:0] w_plv1;
+    wire [1:0] w_mat1;
+    wire w_d1;
+    wire w_v1;
 
     tlb #(
             .TLBNUM 	(16  ))
@@ -950,13 +1032,21 @@ module core #
     wire [5:0] wb_ecode;
     wire wb_esubcode;
 
-    assign wb_has_exception = (wb_pref_adef | wb_ex_ale | wb_id_ine | wb_id_break | wb_id_syscall | wb_id_has_int) & wb_valid;
+    assign wb_has_exception = (wb_pref_adef | wb_ex_ale | wb_id_ine | wb_id_break | wb_id_syscall | wb_id_has_int | wb_pref_tlbr | wb_pref_pif | wb_pref_ppi | wb_ex_tlbr | wb_ex_pil | wb_ex_pis | wb_ex_ppi | wb_ex_pme) & wb_valid;
     assign wb_ecode = {6{wb_pref_adef}} & `ECODE_ADE
            | {6{wb_ex_ale}} & `ECODE_ALE
            | {6{wb_id_ine}} & `ECODE_INE
            | {6{wb_id_break}} & `ECODE_BRK
            | {6{wb_id_syscall}} & `ECODE_SYS
-           | {6{wb_id_has_int}} & `ECODE_INT;
+           | {6{wb_id_has_int}} & `ECODE_INT
+           | {6{wb_pref_tlbr}} & `ECODE_TLBR
+           | {6{wb_pref_pif}} & `ECODE_PIF
+           | {6{wb_pref_ppi}} & `ECODE_PPI
+           | {6{wb_ex_tlbr}} & `ECODE_TLBR
+           | {6{wb_ex_pil}} & `ECODE_PIL
+           | {6{wb_ex_pis}} & `ECODE_PIS
+           | {6{wb_ex_ppi}} & `ECODE_PPI
+           | {6{wb_ex_pme}} & `ECODE_PME;
     assign wb_esubcode = wb_pref_adef & `ESUBCODE_ADEF; // TODO:ADEM暂未实现
 
     wire [31:0] wb_ex_entry; // 传给IF
@@ -970,6 +1060,8 @@ module core #
     wire ipi_int_in = 1'b0;
     wire [8:0] coreid_in = 9'b0;
 
+    wire [31:0] wb_vaddr = (wb_pref_tlbr || wb_pref_ppi || wb_pref_pif) ? wb_pc : wb_EX_result;
+
     // CSR寄存器
     csr_reg u_csr_reg(
                 // input
@@ -982,6 +1074,7 @@ module core #
                 .csr_we		(wb_csr_we & wb_valid),
                 .csr_wmask	(wb_csr_mask),
                 .csr_wvalue	(wb_csr_wvalue),
+
                 .tlbsrch_op (ex_tlbsrch_op),
                 .tlbrd_op (wb_tlbrd_op),
                 // TLBSRCH TLBRD 对CSR有更改 其他TLB指令都是读CSR
@@ -994,7 +1087,7 @@ module core #
                 .wb_ex(wb_has_exception),
                 .wb_ecode(wb_ecode),
                 .wb_esubcode(wb_esubcode),
-                .wb_vaddr(wb_EX_result),
+                .wb_vaddr(wb_vaddr),
                 .ertn_flush(wb_id_ertn_flush),
                 .hw_int_in(hw_int_in),
                 .ipi_int_in(ipi_int_in),
@@ -1011,6 +1104,11 @@ module core #
                 .in_tlbelo0(in_tlbelo0),
                 .in_tlbelo1(in_tlbelo1),
                 .in_tlbidx_ps(in_tlbidx_ps),
+                .out_crmd_da(out_crmd_da),
+                .out_crmd_pg(out_crmd_pg),
+                .out_crmd_plv(out_crmd_plv),
+                .out_dmw0(out_dmw0),
+                .out_dmw1(out_dmw1),
                 .out_tlbidx_index(out_tlbidx_index),
                 .out_tlbidx_ne(out_tlbidx_ne),
                 .out_asid_asid(out_asid_asid),
@@ -1027,7 +1125,7 @@ module core #
            wb_res_from_mem ? wb_mem_result :
            wb_EX_result;
 
-    assign rf_we    = wb_gr_we && valid && wb_valid && ~wb_has_exception;
+    assign rf_we    = wb_gr_we && valid && wb_valid && ~wb_has_exception && ~wb_pref_refetch;
     assign rf_waddr = wb_dest;
     assign rf_wdata = final_result;
 
@@ -1060,9 +1158,10 @@ module core #
     wire validin;
     wire pre_if_ready_go;
     wire to_fs_valid;
-    assign to_fs_valid = inst_sram_req && inst_sram_addr_ok && !exception_cancel_flag && !cancel_inst && !id_has_exception && !ex_has_exception && !mem_has_exception && !wb_has_exception && !wb_id_ertn_flush;
+    assign to_fs_valid = inst_sram_req && inst_sram_addr_ok && !exception_cancel_flag && !cancel_inst && !id_has_exception && !ex_has_exception && !mem_has_exception && !wb_has_exception && !wb_id_ertn_flush && !wb_pref_refetch;
+
     assign pre_if_ready_go = to_fs_valid;
-    assign validin = ~(wb_id_ertn_flush | wb_has_exception) & pre_if_ready_go ;
+    assign validin = ~(wb_id_ertn_flush | wb_has_exception | wb_pref_refetch) & pre_if_ready_go ;
 
     // if stage
     wire [31:0] data_in;
@@ -1080,7 +1179,7 @@ module core #
             if_reg <= 500'b0;
         end
         else if (if_allowin) begin
-            if ((wb_id_ertn_flush || wb_has_exception) && to_fs_valid) begin
+            if ((wb_id_ertn_flush || wb_has_exception || wb_pref_refetch) && to_fs_valid) begin
                 if_valid <= 1'b0;
             end
             else if (br_taken_cancel) begin
@@ -1093,14 +1192,17 @@ module core #
 
         if (validin && if_allowin) begin
             if_reg[31:0] <= pc;
+			if_reg[32] <= pref_refetch; // 为什么别的pref生成的标志不用传输？ 因为别的都是根据pc计算的，这个是根据流水线状态
         end
     end
 
     wire [31:0] if_pc;
     wire [31:0] if_data_in;
+	wire if_pref_refetch;
 
     assign if_pc = if_reg[31:0];
     assign if_data_in = inst_sram_rdata;
+	assign if_pref_refetch = if_reg[32];
 
     // id stage
 
@@ -1165,7 +1267,7 @@ module core #
             id_reg <= 500'b0;
         end
         else if (id_allowin) begin
-            if (wb_id_ertn_flush | wb_has_exception | mem_has_exception | ex_has_exception | id_has_exception | exception_cancel_flag) begin
+            if (wb_id_ertn_flush | wb_has_exception | mem_has_exception | ex_has_exception | id_has_exception | exception_cancel_flag | wb_pref_refetch) begin
                 id_valid <= 1'b0;
             end
             else if (br_taken_cancel) begin
@@ -1180,6 +1282,10 @@ module core #
             id_reg[31:0] <= if_pc;
             id_reg[63:32] <= if_data_in; // data in = inst_sram_rdata
             id_reg[64] <= pref_adef; // 取地址错异常标志
+            id_reg[65] <= pref_tlbr;
+            id_reg[66] <= pref_pif;
+            id_reg[67] <= pref_ppi;
+            id_reg[68] <= if_pref_refetch;
         end
         else if (if_to_id_valid && id_allowin && buffer_valid) begin
             id_reg[64:0] <= if_buffer;
@@ -1189,10 +1295,20 @@ module core #
     wire [31:0] id_pc;
     wire [31:0] id_inst;
     wire id_pref_adef;
+    wire id_pref_tlbr;
+    wire id_pref_pif;
+    wire id_pref_ppi;
+    wire id_pref_refetch;
 
     assign id_pc = id_reg[31:0];
     assign id_inst = id_reg[63:32];
     assign id_pref_adef = id_reg[64];
+    assign id_pref_tlbr = id_reg[65];
+    assign id_pref_pif = id_reg[66];
+    assign id_pref_ppi = id_reg[67];
+    assign id_pref_refetch = id_reg[68];
+
+    wire ex_srch_mem_wr = ex_tlbsrch_op && (mem_csr_we && (mem_csr==`CSR_ASID || mem_csr==`CSR_TLBEHI) || mem_tlbrd_op) && mem_valid;
 
     wire ex_allowin;
     wire ex_ready_go;
@@ -1201,6 +1317,7 @@ module core #
     // ex stage
     assign ex_ready_go = ex_div_enable ? div_complete :
            ex_mem_op ? data_sram_req && data_sram_addr_ok :
+           ex_tlbsrch_op ? ~ex_srch_mem_wr :
            1; // todo
     assign ex_allowin = !ex_valid || ex_ready_go && mem_allowin;
     assign ex_to_mem_valid = ex_valid && ex_ready_go;
@@ -1209,7 +1326,7 @@ module core #
             ex_valid <= 1'b0;
             ex_reg <= 500'b0;
         end
-        else if (wb_id_ertn_flush | wb_has_exception) begin
+        else if (wb_id_ertn_flush | wb_has_exception | wb_pref_refetch) begin
             ex_valid <= 1'b0;
         end
         else if (ex_allowin) begin
@@ -1273,7 +1390,13 @@ module core #
             ex_reg[322] <= tlbfill_op;
             ex_reg[323] <= invtlb_valid;
             ex_reg[328:324] <= invtlb_op;
+            ex_reg[329] <= op_store;
+            ex_reg[330] <= op_load;
 
+            ex_reg[331] <= id_pref_tlbr;
+            ex_reg[332] <= id_pref_pif;
+            ex_reg[333] <= id_pref_ppi;
+            ex_reg[334] <= id_pref_refetch;
         end
     end
 
@@ -1301,7 +1424,6 @@ module core #
     wire [31:0] ex_alu_src1;
     wire [31:0] ex_alu_src2;
     wire [11:0] ex_alu_op;
-    wire [4:0] ex_tlb_op;
 
     wire		ex_div_enable;
     wire		ex_div_signed;
@@ -1311,6 +1433,11 @@ module core #
     wire		ex_op_st_h;
     wire		ex_op_st_w;
 
+    wire		ex_pref_tlbr;
+    wire		ex_pref_pif;
+    wire		ex_pref_ppi;
+
+    wire		ex_pref_refetch;
 
     wire ex_gr_we;
     wire [4:0] ex_dest;
@@ -1335,6 +1462,9 @@ module core #
     wire ex_tlbfill_op;
     wire ex_invtlb_valid;
     wire [4:0] ex_invtlb_op;
+
+    wire ex_op_store;
+    wire ex_op_load;
 
     assign ex_mul_signed = ex_reg[215];
     assign ex_mul_hres = ex_reg[216];
@@ -1393,6 +1523,13 @@ module core #
     assign ex_tlbfill_op = ex_reg[322];
     assign ex_invtlb_valid = ex_reg[323];
     assign ex_invtlb_op = ex_reg[328:324];
+    assign ex_op_store = ex_reg[329];
+    assign ex_op_load = ex_reg[330];
+
+    assign ex_pref_tlbr = ex_reg[331];
+    assign ex_pref_pif = ex_reg[332];
+    assign ex_pref_ppi = ex_reg[333];
+    assign ex_pref_refetch = ex_reg[334];
 
     // mem stage
     wire mem_allowin;
@@ -1407,7 +1544,7 @@ module core #
             mem_valid <= 1'b0;
             mem_reg <= 500'b0;
         end
-        else if (wb_id_ertn_flush | wb_has_exception) begin
+        else if (wb_id_ertn_flush | wb_has_exception | wb_pref_refetch) begin
             mem_valid <= 1'b0;
         end
         else if (mem_allowin) begin
@@ -1455,6 +1592,17 @@ module core #
             mem_reg[239] <= ex_tlbrd_op;
             mem_reg[240] <= ex_tlbwr_op;
             mem_reg[241] <= ex_tlbfill_op;
+
+            mem_reg[242] <= ex_pref_tlbr;
+            mem_reg[243] <= ex_pref_pif;
+            mem_reg[244] <= ex_pref_ppi;
+            mem_reg[245] <= ex_tlbr;
+            mem_reg[246] <= ex_pil;
+            mem_reg[247] <= ex_pis;
+            mem_reg[248] <= ex_ppi;
+            mem_reg[249] <= ex_pme;
+            mem_reg[250] <= ex_pref_refetch;
+            mem_reg[251] <= ex_invtlb_valid;
         end
     end
 
@@ -1500,6 +1648,16 @@ module core #
     wire mem_tlbwr_op;
     wire mem_tlbfill_op;
 
+    wire mem_pref_tlbr;
+    wire mem_pref_pif;
+    wire mem_pref_ppi;
+    wire mem_ex_tlbr;
+    wire mem_ex_pil;
+    wire mem_ex_pis;
+    wire mem_ex_ppi;
+    wire mem_ex_pme;
+
+    wire mem_pref_refetch;
 
     assign mem_pc = mem_reg[31:0];
     assign mem_inst = mem_reg[63:32];
@@ -1543,6 +1701,18 @@ module core #
     assign mem_tlbwr_op = mem_reg[240];
     assign mem_tlbfill_op = mem_reg[241];
 
+    assign mem_pref_tlbr = mem_reg[242];
+    assign mem_pref_pif = mem_reg[243];
+    assign mem_pref_ppi = mem_reg[244];
+    assign mem_ex_tlbr = mem_reg[245];
+    assign mem_ex_pil = mem_reg[246];
+    assign mem_ex_pis = mem_reg[247];
+    assign mem_ex_ppi = mem_reg[248];
+    assign mem_ex_pme = mem_reg[249];
+
+    assign mem_pref_refetch = mem_reg[250];
+    assign mem_invtlb_valid = mem_reg[251];
+
     // wb stage
     wire out_allow = 1;
 
@@ -1555,7 +1725,7 @@ module core #
             wb_valid <= 1'b0;
             wb_reg <= 500'b0;
         end
-        else if (wb_id_ertn_flush || wb_has_exception) begin
+        else if (wb_id_ertn_flush || wb_has_exception || wb_pref_refetch) begin
             wb_valid <= 1'b0;
         end
         else if (wb_allowin) begin
@@ -1599,6 +1769,17 @@ module core #
             wb_reg[264] <= mem_tlbrd_op;
             wb_reg[265] <= mem_tlbwr_op;
             wb_reg[266] <= mem_tlbfill_op;
+
+            wb_reg[267] <= mem_pref_tlbr;
+            wb_reg[268] <= mem_pref_pif;
+            wb_reg[269] <= mem_pref_ppi;
+            wb_reg[270] <= mem_ex_tlbr;
+            wb_reg[271] <= mem_ex_pil;
+            wb_reg[272] <= mem_ex_pis;
+            wb_reg[273] <= mem_ex_ppi;
+            wb_reg[274] <= mem_ex_pme;
+            wb_reg[275] <= mem_pref_refetch;
+            wb_reg[276] <= mem_invtlb_valid;
         end
     end
     assign validout = wb_valid && wb_ready_go ; // not defined
@@ -1639,6 +1820,17 @@ module core #
     wire wb_tlbrd_op;
     wire wb_tlbwr_op;
     wire wb_tlbfill_op;
+
+    wire wb_pref_tlbr;
+    wire wb_pref_pif;
+    wire wb_pref_ppi;
+    wire wb_ex_tlbr;
+    wire wb_ex_pil;
+    wire wb_ex_pis;
+    wire wb_ex_ppi;
+    wire wb_ex_pme;
+    wire wb_pref_refetch;
+    wire wb_invtlb_valid;
 
     assign wb_pc = wb_reg[31:0];
     assign wb_inst = wb_reg[63:32];
@@ -1681,5 +1873,16 @@ module core #
     assign wb_tlbwr_op = wb_reg[265];
     assign wb_tlbfill_op = wb_reg[266];
 
+    /*------页异常------*/
+    assign wb_pref_tlbr = wb_reg[267];
+    assign wb_pref_pif = wb_reg[268];
+    assign wb_pref_ppi = wb_reg[269];
+    assign wb_ex_tlbr = wb_reg[270];
+    assign wb_ex_pil = wb_reg[271];
+    assign wb_ex_pis = wb_reg[272];
+    assign wb_ex_ppi = wb_reg[273];
+    assign wb_ex_pme = wb_reg[274];
 
+    assign wb_pref_refetch = wb_reg[275] & wb_valid;
+    assign wb_invtlb_valid = wb_reg[276];
 endmodule
