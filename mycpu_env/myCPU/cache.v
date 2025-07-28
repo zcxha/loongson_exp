@@ -6,7 +6,7 @@ module cache(
         input wire valid,
         input wire op, // 1 write 0 read
         input wire [7:0] index, // vaddr[11:4]
-        input wire [31:0] paddr, // paddr
+        input wire [19:0] tag,
         input wire [3:0] offset, // vaddr[3:0]
         input wire [3:0] wstrb,
         input wire [31:0] wdata,
@@ -20,7 +20,7 @@ module cache(
         output wire [31:0] rd_addr, // 读请求起始地址
         input wire rd_rdy, // 读请求能否被接收的握手信号
         input wire ret_valid, // 返回数据有效信号
-        input wire [1:0] ret_last, // 最后一次返回数据
+        input wire ret_last, // 最后一次返回数据
         input wire [31:0] ret_data, // 返回数据
 
         output wire wr_req, // 写请求
@@ -31,15 +31,12 @@ module cache(
         input wire wr_rdy // 写请求能否被接收
     );
 
-    wire [19:0] in_tag;
     reg [19:0] reg_tag;
     reg reg_op;
     reg [1:0] reg_bank;
     reg [7:0] reg_index;
     reg [3:0] reg_wstrb;
     reg [31:0] reg_wdata;
-    reg [31:0] reg_paddr;
-    assign in_tag = paddr[31:12];
     always @(posedge clk) begin
         if (~resetn) begin
             reg_tag <= 20'b0;
@@ -48,30 +45,29 @@ module cache(
             reg_index <= 8'b0;
             reg_wstrb <= 4'b0;
             reg_wdata <= 32'b0;
-            reg_paddr <= 32'b0;
         end
         else begin
-            if (m_state==IDLE&&valid_pulse || m_state==LOOKUP&&cache_hit&&valid_pulse) begin
-                reg_tag <= in_tag;
+            if (m_state==IDLE&&valid || m_state==LOOKUP&&cache_hit&&valid) begin
+                reg_tag <= tag;
                 reg_op <= op;
                 reg_index <= index;
                 reg_bank <= offset[3:2];
                 reg_wstrb <= wstrb;
                 reg_wdata <= wdata;
-                reg_paddr <= paddr;
             end
         end
     end
 
-    reg valid_d;
-    wire valid_pulse;
-    always @(posedge clk) begin
-        if (~resetn)
-            valid_d <= 0;
-        else
-            valid_d <= valid;
-    end
-    assign valid_pulse = valid & ~valid_d;
+	reg valid_d;
+	wire valid_pulse;
+	always @(posedge clk) begin
+		if (~resetn) begin
+			valid_d <= 0;
+		end else begin
+			valid_d <= valid;
+		end
+	end
+	assign valid_pulse = valid & ~valid_d;
 
     parameter IDLE = 3'b000;
     parameter LOOKUP = 3'b001;
@@ -81,6 +77,7 @@ module cache(
     parameter WRITE = 3'b101;
     reg [2:0] m_state,w_state;
     reg written;
+    reg refill_write_en;
     always @(posedge clk) begin
         if (~resetn) begin
             m_state <= IDLE;
@@ -91,19 +88,19 @@ module cache(
             data_ok <= 0;
             case (m_state)
                 IDLE: begin
-                    if (valid_pulse) begin
+                    if (valid) begin
                         addr_ok <= 1;
                         m_state <= LOOKUP;
                     end
                 end
                 LOOKUP: begin
-                    if (cache_hit&&!valid_pulse) begin
+                    if (cache_hit&&!valid) begin
                         // 请求完成
                         m_state <= IDLE;
                         data_ok <= 1;
                         rdata <= load_res;
                     end
-                    else if (cache_hit&&valid_pulse) begin
+                    else if (cache_hit&&valid) begin
                         // 请求命中并接收到新请求
                         data_ok <= 1;
                         rdata <= load_res;
@@ -126,14 +123,18 @@ module cache(
                     end
                     if (rd_rdy) begin
                         m_state <= REFILL;
+                        refill_write_en <= 0;
                     end
                 end
                 REFILL: begin
-					if (ret_valid==1&&n_ret_32==reg_bank) begin
-						rdata <= ret_data;
-						data_ok <= 1;
-					end
+                    if (ret_valid==1&&n_ret_32==reg_bank) begin
+                        rdata <= ret_data;
+                        data_ok <= 1;
+                    end
                     if (ret_valid==1&&ret_last==1) begin
+                        refill_write_en <= 1;
+                    end
+                    if (refill_write_en) begin
                         m_state <= IDLE;
                     end
                 end
@@ -143,16 +144,18 @@ module cache(
 
     assign rd_req = m_state==REPLACE&&rd_rdy;
     assign rd_type = 3'b100;
-    assign rd_addr = reg_paddr;
+    assign rd_addr = {reg_tag,reg_index,4'b0};
 
 
     wire [19:0] replace_tag;
     wire replace_d;
+	wire replace_v;
     wire [127:0] replace_line;
     assign replace_tag = replace_way ? way1_tag : way0_tag;
     assign replace_d = replace_way ? way1_d_rdata : way0_d_rdata;
+	assign replace_v = replace_way ? way1_v : way0_v;
     assign replace_line = replace_way ? way1_data : way0_data;
-    assign wr_req = (m_state==REPLACE&&!written)&&replace_d;
+    assign wr_req = (m_state==REPLACE&&!written)&&replace_d&&replace_v;
     assign wr_type = 3'b100;
 
     assign wr_addr = {replace_tag,reg_index,4'b0};
@@ -161,13 +164,13 @@ module cache(
 
 
     // output declaration of module lfsr_random_8bit
-    reg [7:0] random;
+    wire [7:0] random1;
 
     lfsr_random_8bit u_lfsr_random_8bit(
                          .clk    	(clk     ),
                          .resetn 	(resetn  ),
                          .enable 	(1  ),
-                         .random 	(random  )
+                         .random1 	(random1  )
                      );
 
     /*------MISS Buffer------*/
@@ -183,7 +186,7 @@ module cache(
         end
         else begin
             if (m_state==MISS&&wr_rdy) begin
-                replace_way <= random[0];
+                replace_way <= random1[0];
             end
             if (m_state==REPLACE&&rd_rdy) begin
                 n_ret_32 <= 0;
@@ -262,7 +265,7 @@ module cache(
     wire way0_v,way1_v;
     assign tagv_index = m_state==IDLE?index:reg_index;
     assign tagv_we = m_state==REFILL ? (replace_way ? 2'b10 : 2'b01) : 2'b00;
-    assign tagv_wdata = {paddr[31:20],1};
+    assign tagv_wdata = {reg_tag,1'b1};
     tagv_ram Way0_tagv_ram
              (
                  .clka  (clk             ),
@@ -295,12 +298,27 @@ module cache(
     wire [127:0] way0_data;
     wire [127:0] way1_data;
     wire [7:0] ram_index;
-    wire [31:0] ram_wdata;
+    wire [127:0] ram_wdata;
+    wire [127:0] refill_reg_wdata;
+    wire [127:0] aligned_w_wdata;
+    assign refill_reg_wdata = reg_bank==2'b11 ? {reg_wdata,miss_buffer_wdata[95:0]} :
+           reg_bank==2'b10 ? {miss_buffer_wdata[127:96],reg_wdata,miss_buffer_wdata[63:0]} :
+           reg_bank==2'b01 ? {miss_buffer_wdata[127:64],reg_wdata,miss_buffer_wdata[31:0]} :
+           {miss_buffer_wdata[127:32],reg_wdata};
+    assign aligned_w_wdata = w_bank==2'b11 ? {w_wdata,96'b0} :
+           w_bank==2'b10 ? {32'b0,w_wdata,64'b0} :
+           w_bank==2'b01 ? {64'b0,w_wdata,32'b0} :
+           {96'b0,w_wdata};
     assign ram_index = m_state==IDLE ? index :
-           w_state==WRITE ? w_index : reg_index;
-    assign ram_wdata = w_state==WRITE?w_wdata:miss_buffer_wdata;
-    assign Way1_wstrb = (w_way&&w_state==WRITE) ? (w_wstrb<<(w_bank*4)) : (m_state==REFILL&&ret_last&&replace_way) ? 16'hffff : 16'h0;
-    assign Way0_wstrb = (~w_way&&w_state==WRITE) ? (w_wstrb<<(w_bank*4)) : (m_state==REFILL&&ret_last&&!replace_way) ? 16'hffff : 16'h0;
+           w_state==WRITE ? w_index :
+           reg_index;
+    assign ram_wdata = (w_state==WRITE)?aligned_w_wdata:
+           reg_op ? refill_reg_wdata : // 如果refill是store
+           miss_buffer_wdata;
+    assign Way1_wstrb = (w_way&&w_state==WRITE) ? (w_wstrb<<(w_bank*4)) :
+           (m_state==REFILL&&refill_write_en&&replace_way) ? 16'hffff : 16'h0;
+    assign Way0_wstrb = (~w_way&&w_state==WRITE) ? (w_wstrb<<(w_bank*4)) :
+           (m_state==REFILL&&refill_write_en&&!replace_way) ? 16'hffff : 16'h0;
     // DATA Bank RAM 8* 256x32
     data_bank_ram Way0_Bank0_ram
                   (
@@ -308,7 +326,7 @@ module cache(
                       .ena   (1        ),
                       .wea   (Way0_wstrb[3:0]        ),   //3:0
                       .addra (ram_index),   //15:0
-                      .dina  (ram_wdata     ),   //31:0
+                      .dina  (ram_wdata[31:0]     ),   //31:0
                       .douta (  way0_data[31:0]   )    //31:0
                   );
     data_bank_ram Way0_Bank1_ram
@@ -317,7 +335,7 @@ module cache(
                       .ena   (1        ),
                       .wea   (Way0_wstrb[7:4]        ),   //3:0
                       .addra (ram_index),   //15:0
-                      .dina  (ram_wdata     ),   //31:0
+                      .dina  (ram_wdata[63:32]     ),   //31:0
                       .douta (  way0_data[63:32]   )    //31:0
                   );
     data_bank_ram Way0_Bank2_ram
@@ -326,7 +344,7 @@ module cache(
                       .ena   (1        ),
                       .wea   (Way0_wstrb[11:8]        ),   //3:0
                       .addra (ram_index),   //15:0
-                      .dina  (ram_wdata     ),   //31:0
+                      .dina  (ram_wdata[95:64]     ),   //31:0
                       .douta (way0_data[95:64]     )    //31:0
                   );
     data_bank_ram Way0_Bank3_ram
@@ -335,7 +353,7 @@ module cache(
                       .ena   (1        ),
                       .wea   (Way0_wstrb[15:12]        ),   //3:0
                       .addra (ram_index),   //15:0
-                      .dina  (ram_wdata     ),   //31:0
+                      .dina  (ram_wdata[127:96]     ),   //31:0
                       .douta (way0_data[127:96]     )    //31:0
                   );
     data_bank_ram Way1_Bank0_ram
@@ -344,7 +362,7 @@ module cache(
                       .ena   (1        ),
                       .wea   (Way1_wstrb[3:0]        ),   //3:0
                       .addra (ram_index),   //15:0
-                      .dina  (ram_wdata     ),   //31:0
+                      .dina  (ram_wdata[31:0]     ),   //31:0
                       .douta (way1_data[31:0]     )    //31:0
                   );
     data_bank_ram Way1_Bank1_ram
@@ -353,7 +371,7 @@ module cache(
                       .ena   (1        ),
                       .wea   (Way1_wstrb[7:4]        ),   //3:0
                       .addra (ram_index),   //15:0
-                      .dina  (ram_wdata     ),   //31:0
+                      .dina  (ram_wdata[63:32]     ),   //31:0
                       .douta (way1_data[63:32]     )    //31:0
                   );
     data_bank_ram Way1_Bank2_ram
@@ -362,7 +380,7 @@ module cache(
                       .ena   (1        ),
                       .wea   (Way1_wstrb[11:8]        ),   //3:0
                       .addra (ram_index),   //15:0
-                      .dina  (ram_wdata     ),   //31:0
+                      .dina  (ram_wdata[95:64]     ),   //31:0
                       .douta (way1_data[95:64]     )    //31:0
                   );
     data_bank_ram Way1_Bank3_ram
@@ -371,9 +389,13 @@ module cache(
                       .ena   (1        ),
                       .wea   (Way1_wstrb[15:12]        ),   //3:0
                       .addra (ram_index),   //15:0
-                      .dina  (ram_wdata     ),   //31:0
+                      .dina  (ram_wdata[127:96]     ),   //31:0
                       .douta (way1_data[127:96]     )    //31:0
                   );
+
+	wire [31:0] way0_load_word;
+	wire [31:0] way1_load_word;
+	wire [31:0] load_res;
 
     assign way0_load_word = way0_data[reg_bank*32 +: 32];
     assign way1_load_word = way1_data[reg_bank*32 +: 32];
@@ -388,8 +410,8 @@ module cache(
     wire [7:0] d_index;
     assign d_index = m_state==IDLE?index:
            w_state==WRITE?w_index:reg_index;
-    assign way1_we = (w_state==WRITE&&w_way || m_state==REFILL) ? 1 : 0;
-    assign way0_we = (w_state==WRITE&&!w_way || m_state==REFILL) ? 1 : 0;
+    assign way1_we = (w_state==WRITE&&w_way || (m_state==REFILL&&replace_way)) ? 1 : 0;
+    assign way0_we = (w_state==WRITE&&!w_way || m_state==REFILL&&!replace_way) ? 1 : 0;
 
     always @(posedge clk) begin
         if (~resetn) begin
@@ -397,10 +419,33 @@ module cache(
             Way1_D <= 256'b0;
         end
         else begin
-            if (way0_we)
-                Way0_D[d_index] <= w_state==WRITE;
-            if (way1_we)
-                Way1_D[d_index] <= w_state==WRITE;
+            if (way0_we) begin
+                if (w_state==WRITE) begin
+                    Way0_D[d_index] <= 1;
+                end
+                else if (m_state==REFILL) begin
+                    if (reg_op) begin
+                        Way0_D[d_index] <= 1;
+                    end
+                    else begin
+                        Way0_D[d_index] <= 0;
+                    end
+                end
+            end
+
+            if (way1_we) begin
+                if (w_state==WRITE) begin
+                    Way1_D[d_index] <= 1;
+                end
+                else if (m_state==REFILL) begin
+                    if (reg_op) begin
+                        Way1_D[d_index] <= 1;
+                    end
+                    else begin
+                        Way1_D[d_index] <= 0;
+                    end
+                end
+            end
         end
     end
     wire way0_d_rdata;
