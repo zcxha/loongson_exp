@@ -47,7 +47,7 @@ module cache(
             reg_wdata <= 32'b0;
         end
         else begin
-            if (m_state==IDLE&&valid || m_state==LOOKUP&&cache_hit&&valid) begin
+            if (m_state==IDLE&&valid /*|| m_state==LOOKUP&&cache_hit&&valid*/) begin
                 reg_tag <= tag;
                 reg_op <= op;
                 reg_index <= index;
@@ -58,16 +58,17 @@ module cache(
         end
     end
 
-	reg valid_d;
-	wire valid_pulse;
-	always @(posedge clk) begin
-		if (~resetn) begin
-			valid_d <= 0;
-		end else begin
-			valid_d <= valid;
-		end
-	end
-	assign valid_pulse = valid & ~valid_d;
+    reg valid_d;
+    wire valid_pulse;
+    always @(posedge clk) begin
+        if (~resetn) begin
+            valid_d <= 0;
+        end
+        else begin
+            valid_d <= valid;
+        end
+    end
+    assign valid_pulse = valid & ~valid_d;
 
     parameter IDLE = 3'b000;
     parameter LOOKUP = 3'b001;
@@ -94,18 +95,18 @@ module cache(
                     end
                 end
                 LOOKUP: begin
-                    if (cache_hit&&!valid) begin
+                    if (cache_hit) begin
                         // 请求完成
                         m_state <= IDLE;
                         data_ok <= 1;
                         rdata <= load_res;
                     end
-                    else if (cache_hit&&valid) begin
-                        // 请求命中并接收到新请求
-                        data_ok <= 1;
-                        rdata <= load_res;
-                        addr_ok <= 1;
-                    end
+                    // else if (cache_hit&&valid) begin
+                    //     // 请求命中并接收到新请求
+                    //     data_ok <= 1;
+                    //     rdata <= load_res;
+                    //     addr_ok <= 1;
+                    // end
                     else if (!cache_hit) begin
                         m_state <= MISS;
                     end
@@ -149,11 +150,11 @@ module cache(
 
     wire [19:0] replace_tag;
     wire replace_d;
-	wire replace_v;
+    wire replace_v;
     wire [127:0] replace_line;
     assign replace_tag = replace_way ? way1_tag : way0_tag;
     assign replace_d = replace_way ? way1_d_rdata : way0_d_rdata;
-	assign replace_v = replace_way ? way1_v : way0_v;
+    assign replace_v = replace_way ? way1_v : way0_v;
     assign replace_line = replace_way ? way1_data : way0_data;
     assign wr_req = (m_state==REPLACE&&!written)&&replace_d&&replace_v;
     assign wr_type = 3'b100;
@@ -301,10 +302,32 @@ module cache(
     wire [127:0] ram_wdata;
     wire [127:0] refill_reg_wdata;
     wire [127:0] aligned_w_wdata;
-    assign refill_reg_wdata = reg_bank==2'b11 ? {reg_wdata,miss_buffer_wdata[95:0]} :
-           reg_bank==2'b10 ? {miss_buffer_wdata[127:96],reg_wdata,miss_buffer_wdata[63:0]} :
-           reg_bank==2'b01 ? {miss_buffer_wdata[127:64],reg_wdata,miss_buffer_wdata[31:0]} :
-           {miss_buffer_wdata[127:32],reg_wdata};
+    assign refill_reg_wdata = reg_bank==2'b11 ? {
+               reg_wstrb[3]?reg_wdata[31:24]:miss_buffer_wdata[127:120],
+               reg_wstrb[2]?reg_wdata[23:16]:miss_buffer_wdata[119:112],
+               reg_wstrb[1]?reg_wdata[15:8]:miss_buffer_wdata[111:104],
+               reg_wstrb[0]?reg_wdata[7:0]:miss_buffer_wdata[103:96],
+               miss_buffer_wdata[95:0]} :
+           reg_bank==2'b10 ? {
+               miss_buffer_wdata[127:96],
+               reg_wstrb[3]?reg_wdata[31:24]:miss_buffer_wdata[95:88],
+               reg_wstrb[2]?reg_wdata[23:16]:miss_buffer_wdata[87:80],
+               reg_wstrb[1]?reg_wdata[15:8]:miss_buffer_wdata[79:72],
+               reg_wstrb[0]?reg_wdata[7:0]:miss_buffer_wdata[71:64],
+               miss_buffer_wdata[63:0]} :
+           reg_bank==2'b01 ? {
+               miss_buffer_wdata[127:64],
+               reg_wstrb[3]?reg_wdata[31:24]:miss_buffer_wdata[63:56],
+               reg_wstrb[2]?reg_wdata[23:16]:miss_buffer_wdata[55:48],
+               reg_wstrb[1]?reg_wdata[15:8]:miss_buffer_wdata[47:40],
+               reg_wstrb[0]?reg_wdata[7:0]:miss_buffer_wdata[39:32],
+               miss_buffer_wdata[31:0]} :
+           {
+               miss_buffer_wdata[127:32],
+               reg_wstrb[3]?reg_wdata[31:24]:miss_buffer_wdata[31:24],
+               reg_wstrb[2]?reg_wdata[23:16]:miss_buffer_wdata[23:16],
+               reg_wstrb[1]?reg_wdata[15:8]:miss_buffer_wdata[15:8],
+               reg_wstrb[0]?reg_wdata[7:0]:miss_buffer_wdata[7:0]};
     assign aligned_w_wdata = w_bank==2'b11 ? {w_wdata,96'b0} :
            w_bank==2'b10 ? {32'b0,w_wdata,64'b0} :
            w_bank==2'b01 ? {64'b0,w_wdata,32'b0} :
@@ -393,9 +416,9 @@ module cache(
                       .douta (way1_data[127:96]     )    //31:0
                   );
 
-	wire [31:0] way0_load_word;
-	wire [31:0] way1_load_word;
-	wire [31:0] load_res;
+    wire [31:0] way0_load_word;
+    wire [31:0] way1_load_word;
+    wire [31:0] load_res;
 
     assign way0_load_word = way0_data[reg_bank*32 +: 32];
     assign way1_load_word = way1_data[reg_bank*32 +: 32];
