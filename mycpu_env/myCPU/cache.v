@@ -141,7 +141,10 @@ module cache(
         end
     end
 
-	assign addr_ok = m_state==IDLE&&valid || m_state==LOOKUP&&cache_hit&&valid;
+	wire wr_rd_relate;
+	assign wr_rd_relate = !op && reg_op && tag==reg_tag && index==reg_index;
+	wire addr_overlap = w_state==WRITE && !op && tag==reg_tag && index==w_index && offset[3:2]==w_bank;
+	assign addr_ok = (m_state==IDLE&&valid || (m_state==LOOKUP&&cache_hit&&valid&&!wr_rd_relate))&&!addr_overlap;
 	assign data_ok = m_state==LOOKUP&&cache_hit || m_state==REFILL&&ret_valid&&n_ret_32==reg_bank;
 	assign rdata = m_state==LOOKUP&&cache_hit ? load_res : m_state==REFILL&&ret_valid&&n_ret_32==reg_bank ? ret_data : 32'b0;
     assign rd_req = m_state==REPLACE&&rd_rdy;
