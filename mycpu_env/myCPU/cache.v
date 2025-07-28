@@ -10,9 +10,9 @@ module cache(
         input wire [3:0] offset, // vaddr[3:0]
         input wire [3:0] wstrb,
         input wire [31:0] wdata,
-        output reg addr_ok, // 读：地址被接收 写：地址和数据被接收
-        output reg data_ok, // 读：数据返回 写：数据写入完成
-        output reg [31:0] rdata,
+        output wire addr_ok, // 读：地址被接收 写：地址和数据被接收
+        output wire data_ok, // 读：数据返回 写：数据写入完成
+        output wire [31:0] rdata,
 
         /// cache - AXI bus
         output wire rd_req, // 读请求
@@ -47,7 +47,7 @@ module cache(
             reg_wdata <= 32'b0;
         end
         else begin
-            if (m_state==IDLE&&valid /*|| m_state==LOOKUP&&cache_hit&&valid*/) begin
+            if (m_state==IDLE&&valid || m_state==LOOKUP&&cache_hit&&valid) begin
                 reg_tag <= tag;
                 reg_op <= op;
                 reg_index <= index;
@@ -85,21 +85,21 @@ module cache(
             written <= 0;
         end
         else begin
-            addr_ok <= 0;
-            data_ok <= 0;
             case (m_state)
                 IDLE: begin
                     if (valid) begin
-                        addr_ok <= 1;
                         m_state <= LOOKUP;
                     end
                 end
                 LOOKUP: begin
                     if (cache_hit) begin
                         // 请求完成
-                        m_state <= IDLE;
-                        data_ok <= 1;
-                        rdata <= load_res;
+                        if (valid) begin
+                            m_state <= LOOKUP;
+                        end
+                        else begin
+                            m_state <= IDLE;
+                        end
                     end
                     // else if (cache_hit&&valid) begin
                     //     // 请求命中并接收到新请求
@@ -129,8 +129,6 @@ module cache(
                 end
                 REFILL: begin
                     if (ret_valid==1&&n_ret_32==reg_bank) begin
-                        rdata <= ret_data;
-                        data_ok <= 1;
                     end
                     if (ret_valid==1&&ret_last==1) begin
                         refill_write_en <= 1;
@@ -143,6 +141,9 @@ module cache(
         end
     end
 
+	assign addr_ok = m_state==IDLE&&valid || m_state==LOOKUP&&cache_hit&&valid;
+	assign data_ok = m_state==LOOKUP&&cache_hit || m_state==REFILL&&ret_valid&&n_ret_32==reg_bank;
+	assign rdata = m_state==LOOKUP&&cache_hit ? load_res : m_state==REFILL&&ret_valid&&n_ret_32==reg_bank ? ret_data : 32'b0;
     assign rd_req = m_state==REPLACE&&rd_rdy;
     assign rd_type = 3'b100;
     assign rd_addr = {reg_tag,reg_index,4'b0};
