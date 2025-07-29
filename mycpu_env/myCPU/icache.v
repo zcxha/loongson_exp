@@ -1,4 +1,4 @@
-module cache(
+module icache(
         input wire clk,
         input wire resetn,
 
@@ -77,12 +77,14 @@ module cache(
     localparam REFILL = 3'b100;
     localparam WRITE = 3'b101;
     reg [2:0] m_state,w_state;
+	reg [31:0] rdata_buf;
     reg written;
     reg refill_write_en;
     always @(posedge clk) begin
         if (~resetn) begin
             m_state <= IDLE;
             written <= 0;
+			rdata_buf <= 32'b0;
         end
         else begin
             case (m_state)
@@ -100,13 +102,9 @@ module cache(
                         else begin
                             m_state <= IDLE;
                         end
+						rdata_buf <= load_res;
                     end
-                    // else if (cache_hit&&valid) begin
-                    //     // 请求命中并接收到新请求
-                    //     data_ok <= 1;
-                    //     rdata <= load_res;
-                    //     addr_ok <= 1;
-                    // end
+
                     else if (!cache_hit) begin
                         m_state <= MISS;
                     end
@@ -129,6 +127,7 @@ module cache(
                 end
                 REFILL: begin
                     if (ret_valid==1&&n_ret_32==reg_bank) begin
+						rdata_buf <= ret_data;
                     end
                     if (ret_valid==1&&ret_last==1) begin
                         refill_write_en <= 1;
@@ -146,10 +145,10 @@ module cache(
 	wire addr_overlap = w_state==WRITE && !op && tag==reg_tag && index==w_index && offset[3:2]==w_bank;
 	assign addr_ok = (m_state==IDLE&&valid || (m_state==LOOKUP&&cache_hit&&valid&&!wr_rd_relate))&&!addr_overlap;
 	assign data_ok = m_state==LOOKUP&&cache_hit || m_state==REFILL&&ret_valid&&n_ret_32==reg_bank;
-	assign rdata = m_state==LOOKUP&&cache_hit ? load_res : m_state==REFILL&&ret_valid&&n_ret_32==reg_bank ? ret_data : 32'b0;
     assign rd_req = m_state==REPLACE;
     assign rd_type = 3'b100;
     assign rd_addr = {reg_tag,reg_index,4'b0};
+	assign rdata = m_state==LOOKUP&&cache_hit ? load_res : m_state==REFILL&&ret_valid&&n_ret_32==reg_bank ? ret_data : rdata_buf;
 
 
     wire [19:0] replace_tag;

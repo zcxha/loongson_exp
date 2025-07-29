@@ -36,13 +36,13 @@ module sram_to_axi_bridge_2_1 (
         // ar
         output wire [3:0] arid, // 读请求ID
         output wire [31:0] araddr, // 读请求地址
-        output wire [7:0] arlen, // 读请求传输长度
-        output wire [2:0] arsize, // 读请求传输大小
+        output reg [7:0] arlen, // 读请求传输长度
+        output reg [2:0] arsize, // 读请求传输大小
         output wire [1:0] arburst, // burst类型
         output wire [1:0] arlock, // 锁类型
         output wire [3:0] arcache, // 缓存类型
         output wire [2:0] arprot, // 保护属性
-        output wire arvalid, // master->slave 读请求地址握手信号，读请求地址有效
+        output reg arvalid, // master->slave 读请求地址握手信号，读请求地址有效
         input wire arready, // slave->master 读请求地址握手信号，从方准备好接受地址传输
 
         // r
@@ -51,11 +51,11 @@ module sram_to_axi_bridge_2_1 (
         input wire [1:0] rresp, // 本次读请求是否成功完成
         input wire rlast, // 是否为本次burst的最后一拍数据
         input wire rvalid, // slave -> master 读请求数据握手信号，读请求数据有效
-        output wire rready, // master -> slave 读请求数据握手信号，主方准备好接收数据传输
+        output reg rready, // master -> slave 读请求数据握手信号，主方准备好接收数据传输
 
         // aw
         output wire [3:0] awid, // 写请求ID
-        output wire [31:0] awaddr, // 写请求地址
+        output reg [31:0] awaddr, // 写请求地址
         output wire [7:0] awlen, // 写请求传输长度
         output wire [2:0] awsize, // 写请求传输大小
         output wire [1:0] awburst, // burst类型
@@ -80,85 +80,99 @@ module sram_to_axi_bridge_2_1 (
         output wire bready // 写请求响应握手信号，主方准备好接收写响应
     );
 
-    localparam IDLE = 3'b000;
-    localparam IC_RD = 3'b001;
-    localparam DC_RD = 3'b010;
-
-    reg state;
-    always @(posedge clk) begin
-        if (~resetn) begin
-            state <= IDLE;
-        end
-        else begin
-            case (state)
-                IDLE: begin
-                    if (dcache_rd_req) begin
-                        state <= DC_RD;
-                    end
-                    else if (icache_rd_req) begin
-                        state <= IC_RD;
-                    end
-                end
-                IC_RD: begin
-                    if (rvalid&&rlast) begin
-                        if (dcache_rd_req) begin
-                            state <= DC_RD;
-                        end
-                        else begin
-                            state <= IDLE;
-                        end
-                    end
-                end
-                DC_RD: begin
-                    if (rvalid&&rlast) begin
-                        if (icache_rd_req) begin
-                            state <= IC_RD;
-                        end
-                        else begin
-                            state <= IDLE;
-                        end
-                    end
-                end
-            endcase
-        end
-    end
-
+    // ar
     // REQ MUX
-    // r
-    assign arvalid = icache_rd_req | dcache_rd_req;
-    assign arid = dcache_rd_req ? 1 :
-           0;
-    assign araddr = dcache_rd_req ? dcache_rd_addr :
-           /*icache_rd_req */ icache_rd_addr ;
 
-    assign arlen = 7'b011; // len = 3 + 1 = 4
-    assign arsize = 3'b010 ; // size = 2 ^ 2 = 4 byte
+
     assign arburst = 2'b01; // add
     assign arlock = 0;
     assign arcache = 0;
     assign arprot = 0;
-    assign rready = 1;
 
+    localparam AR_IDLE = 3'b000;
+    localparam AR_WAIT = 3'b001;
+    localparam AR_READ = 3'b010;
+    reg [2:0] ar_state;
+    reg [1:0] handshake_ok;
+    reg req_type; // 0 inst 1 data
 
+    always @(posedge clk) begin
+        if (~resetn) begin
+            arvalid <= 0;
+            ar_state <= AR_IDLE;
+            req_type <= 0;
+
+            rready <= 0;
+
+            handshake_ok <= 2'b0;
+        end
+        case (ar_state)
+            AR_IDLE: begin
+                if (aw_w_state==AW_W_IDLE) begin
+                    if (dcache_rd_req) begin
+                        req_type <= 1;
+                        arvalid <= 1;
+                        arlen <= 7'b011;
+                        arsize <= 3'b010;
+
+                        rready <= 0;
+
+                        handshake_ok <= 2'b0;
+
+                        ar_state <= AR_WAIT;
+                    end
+                    else if (icache_rd_req) begin
+                        req_type <= 0;
+                        arvalid <= 1;
+                        arlen <= 7'b011;
+                        arsize <= 3'b010;
+
+                        rready <= 0;
+
+                        handshake_ok <= 2'b0;
+
+                        ar_state <= AR_WAIT;
+                    end
+                end
+            end
+            AR_WAIT: begin
+                if (arvalid && arready) begin
+                    arvalid <= 0;
+
+                    rready <= 1;
+
+                    handshake_ok[req_type] <= 1;
+
+                    ar_state <= AR_READ;
+                end
+            end
+            AR_READ: begin
+                if (rvalid && rlast) begin
+                    ar_state <= AR_IDLE;
+                end
+            end
+        endcase
+    end
+    assign arid = {3'b0,req_type};
+    assign araddr = req_type ? dcache_rd_addr :
+           /*icache_rd_req */ icache_rd_addr ;
+
+    // r
     // 状态机组合逻辑
-    assign icache_rd_rdy = arready & icache_rd_req;
-    assign icache_ret_valid = rvalid & state==IC_RD;
-    assign icache_ret_last = rlast & state==IC_RD;
-    assign icache_ret_data = state==IC_RD ? rdata : 32'b0;
 
-    assign dcache_rd_rdy = arready & dcache_rd_req;
-    assign dcache_ret_valid = rvalid & state==DC_RD;
-    assign dcache_ret_last = rlast & state==DC_RD;
-    assign dcache_ret_data = state==DC_RD ? rdata : 32'b0;
 
-    localparam DC_WR_WAIT = 3'b011;
-    localparam DC_WR = 3'b100;
-    localparam DC_WR1 = 3'b101;
-    localparam DC_WR2 = 3'b110;
+    assign icache_rd_rdy = handshake_ok[0];
+    assign icache_ret_valid = rvalid && rid==4'b0 && handshake_ok[0];
+    assign icache_ret_last = rlast && rid==4'b0 && handshake_ok[0];
+    assign icache_ret_data = (handshake_ok[0] && rid==4'b0) ? rdata : 32'b0;
+
+    assign dcache_rd_rdy = handshake_ok[1];
+    assign dcache_ret_valid = rvalid && rid==4'd1 && handshake_ok[1];
+    assign dcache_ret_last = rlast && rid==4'd1 && handshake_ok[1];
+    assign dcache_ret_data = (handshake_ok[1] && rid==4'd1) ? rdata : 32'b0;
 
     // aw/w
-    assign awid = 1;
-    assign awaddr = dcache_wr_addr;
+    assign awid = {3'b0,1};
     assign awlen = 7'b011;
     assign awsize = 3'b010;
     assign awburst = 2'b01;
@@ -166,65 +180,91 @@ module sram_to_axi_bridge_2_1 (
     assign awcache = 0;
     assign awprot = 0;
 
-    assign wid = 1;
+    assign wid = {3'b0,1};
 
+    localparam AW_W_IDLE = 3'b000;
+    localparam AW_W_WAIT = 3'b001;
+    localparam AW_W_WCYCLE = 3'b010;
+    localparam B_WAIT = 3'b011;
 
-    reg [127:0] wr_buffer;
-    reg [2:0] w_state;
+    reg [2:0] aw_w_state;
+    reg [127:0] aw_w_wdata_buffer;
+    reg [1:0] aw_w_cnt;
+
     always @(posedge clk) begin
         if (~resetn) begin
-            wr_buffer <= 128'b0;
-            w_state <= IDLE;
+            aw_w_state <= AW_W_IDLE;
+            aw_w_wdata_buffer <= 128'b0;
+            aw_w_cnt <= 2'b0;
+
+            awvalid <= 0;
+
+            wvalid <= 0;
+            wlast <= 0;
         end
-        case (w_state)
-            IDLE: begin
-                if (wready) begin
-                    wvalid <= 0;
-                    wlast <= 0;
-                end
+        case (aw_w_state)
+            AW_W_IDLE: begin
                 if (dcache_wr_req) begin
-                    wr_buffer <= dcache_wr_data;
+                    awvalid <= 1;
+                    awaddr <= dcache_wr_addr;
+
                     wstrb <= dcache_wr_wstrb;
-					awvalid <= 1;
 
-                    w_state <= DC_WR_WAIT;
+                    aw_w_wdata_buffer <= dcache_wr_data;
+                    aw_w_state <= AW_W_WAIT;
                 end
             end
-            DC_WR_WAIT: begin
-                if (awready) begin
-                    w_state <= DC_WR;
+            AW_W_WAIT: begin
+                if (awvalid && awready) begin
+                    awvalid <= 0;
 
-					awvalid <= 0;
-                    wdata <= wr_buffer[31:0];
                     wvalid <= 1;
+                    wdata <= aw_w_wdata_buffer[31:0];
+                    aw_w_cnt <= 2'b0;
+                    wlast <= 0;
+
+                    aw_w_state <= AW_W_WCYCLE;
                 end
             end
-            DC_WR: begin
-                if (wready) begin
-                    w_state <= DC_WR1;
+            AW_W_WCYCLE: begin
+                if (wvalid&&wready) begin
+                    aw_w_cnt <= aw_w_cnt + 1;
 
-                    wdata <= wr_buffer[63:32];
+                    if (aw_w_cnt == 2'b00) begin
+                        wdata <= aw_w_wdata_buffer[63:32];
+                    end
+                    else if (aw_w_cnt == 2'b01) begin
+                        wdata <= aw_w_wdata_buffer[95:64];
+                    end
+                    else if (aw_w_cnt == 2'b10) begin
+                        wdata <= aw_w_wdata_buffer[127:96];
+                        wlast <= 1;
+                    end
+                    else if (aw_w_cnt == 2'b11) begin
+                        aw_w_state <= B_WAIT;
+                        wvalid <= 0;
+                        wlast <= 0;
+                    end
+                    else begin
+                        wdata <= 32'hdeadbeef;
+                    end
                 end
             end
-            DC_WR1: begin
-                if (wready) begin
-                    w_state <= DC_WR2;
+            B_WAIT: begin
 
-                    wdata <= wr_buffer[95:64];
-                end
-            end
-            DC_WR2: begin
-                if (wready) begin
-                    w_state <= IDLE;
-
-                    wdata <= wr_buffer[127:96];
-                    wlast <= 1;
+                if (bvalid&&bready) begin
+                    aw_w_state <= AW_W_IDLE;
                 end
             end
         endcase
     end
 
-    assign dcache_wr_rdy = w_state==IDLE;
+    assign bready = 1;
+
+    assign dcache_wr_rdy = aw_w_state==AW_W_IDLE;
+
+
+
 
 
 endmodule

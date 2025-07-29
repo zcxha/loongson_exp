@@ -134,7 +134,7 @@ module mycpu_top (
 	wire ret_last;
 	wire [31:0] ret_data;
 	
-	cache i_cache(
+	icache i_cache(
 		.clk       	(aclk        ),
 		.resetn    	(aresetn     ),
 		.valid     	(core_inst_sram_req      ),
@@ -178,7 +178,7 @@ module mycpu_top (
 	wire [127:0] dcwr_data;
 
 	wire dcwr_rdy;
-	cache d_cache(
+	dcache d_cache(
 		.clk       	(aclk        ),
 		.resetn    	(aresetn     ),
 		.valid     	(core_data_sram_req      ),
@@ -239,6 +239,7 @@ module mycpu_top (
 			.dcache_wr_type (dcwr_type),
 			.dcache_wr_wstrb (dcwr_wstrb),
 			.dcache_wr_data (dcwr_data),
+			.dcache_wr_rdy (dcwr_rdy),
     		// ar
     		.arid		(arid),
     		.araddr		(araddr),
