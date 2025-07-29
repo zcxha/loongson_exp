@@ -1,4 +1,4 @@
-module dcache(
+module cache(
         input wire clk,
         input wire resetn,
 
@@ -10,25 +10,25 @@ module dcache(
         input wire [3:0] offset, // vaddr[3:0]
         input wire [3:0] wstrb,
         input wire [31:0] wdata,
-        output wire addr_ok, // 读：地址被接收 写：地址和数据被接收
-        output wire data_ok, // 读：数据返回 写：数据写入完成
+        output wire addr_ok, // 读：地�?�被接收 写：地�?�和数�?�被接收
+        output wire data_ok, // 读：数�?�返回 写：数�?�写入完�?
         output wire [31:0] rdata,
 
         /// cache - AXI bus
         output wire rd_req, // 读请求
-        output wire [2:0] rd_type, // 3'b000-字节 3'b001-半字 3'b010-字 3'b100 cache行
-        output wire [31:0] rd_addr, // 读请求起始地址
-        input wire rd_rdy, // 读请求能否被接收的握手信号
-        input wire ret_valid, // 返回数据有效信号
-        input wire ret_last, // 最后一次返回数据
-        input wire [31:0] ret_data, // 返回数据
+        output wire [2:0] rd_type, // 3'b000-字节 3'b001-�?�字 3'b010-字 3'b100 cache行
+        output wire [31:0] rd_addr, // 读请求起始地�?�
+        input wire rd_rdy, // 读请求能�?�被接收的�?�手信�?�
+        input wire ret_valid, // 返回数�?�有效信�?�
+        input wire ret_last, // 最�?�一次返回数�?�
+        input wire [31:0] ret_data, // 返回数�?�
 
         output wire wr_req, // 写请求
         output wire [2:0] wr_type,
         output wire [31:0] wr_addr,
         output wire [3:0] wr_wstrb,
         output wire [127:0] wr_data,
-        input wire wr_rdy // 写请求能否被接收
+        input wire wr_rdy // 写请求能�?�被接收
     );
 
     reg [19:0] reg_tag;
@@ -95,7 +95,7 @@ module dcache(
                 end
                 LOOKUP: begin
                     if (cache_hit) begin
-                        // 请求完成
+                        // 请求完�?
                         if (valid) begin
                             m_state <= LOOKUP;
                         end
@@ -111,7 +111,7 @@ module dcache(
                 end
                 MISS: begin
                     if (wr_rdy) begin
-                        // 对cache发起读行请求
+                        // 对cache�?�起读行请求
                         m_state <= REPLACE;
                         written <= 0;
                     end
@@ -181,7 +181,7 @@ module dcache(
     reg replace_way;
     reg [127:0] miss_buffer_wdata;
     wire [127:0] next_data = {miss_buffer_wdata[127:32],ret_data};
-    reg [1:0] n_ret_32; // AXI总线返回了几个32位数据
+    reg [1:0] n_ret_32; // AXI总线返回了几个32�?数�?�
     always @(posedge clk) begin
         if (~resetn) begin
             replace_way <= 0;
@@ -196,7 +196,7 @@ module dcache(
                 n_ret_32 <= 0;
             end
             if (ret_valid) begin
-                n_ret_32 <= n_ret_32 + 1'b1;
+                n_ret_32 <= n_ret_32 + 1;
                 if(ret_last)
                     miss_buffer_wdata <= next_data;
                 else
@@ -250,7 +250,7 @@ module dcache(
                 end
                 WRITE: begin
                     if(m_state==LOOKUP&&reg_op&&cache_hit) begin
-                        // 此时接受到新的HIT WRITE 则继续写
+                        // 此时接�?�到新的HIT WRITE 则继续写
                     end
                     else begin
                         w_state <= IDLE;
@@ -335,7 +335,8 @@ module dcache(
            w_bank==2'b10 ? {32'b0,w_wdata,64'b0} :
            w_bank==2'b01 ? {64'b0,w_wdata,32'b0} :
            {96'b0,w_wdata};
-    assign ram_index = w_state==WRITE ? w_index :
+    assign ram_index =
+           w_state==WRITE ? w_index :
            m_state==IDLE ? index :
            reg_index;
     assign ram_wdata = (w_state==WRITE)?aligned_w_wdata:
