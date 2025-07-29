@@ -3,40 +3,46 @@ module sram_to_axi_bridge_2_1 (
         input wire resetn,
 
         /* 两个类SRAM从方 */
-        input wire inst_sram_req,
-        input wire inst_sram_wr,
-        input wire [1:0] inst_sram_size,
-        input wire [31:0] inst_sram_addr,
-        input wire [3:0] inst_sram_wstrb,
-        input wire [31:0] inst_sram_wdata,
+        // Icache
+        input wire icache_rd_req, // icache 发起读请求
+        input wire [2:0] icache_rd_type, // 3'b000 byte 3'b001 half word 3'b010 word 3'b100 cache line (128b)
+        input wire [31:0] icache_rd_addr, // icache读地址
 
-        output reg inst_sram_addr_ok,
-        output reg inst_sram_data_ok,
-        output reg [31:0] inst_sram_rdata,
+        output wire icache_rd_rdy, // 准备接收读请求
+        output wire icache_ret_valid, // 读返回数据有效
+        output wire icache_ret_last, // 返回burst最后一个数据
+        output wire [31:0] icache_ret_data, // 读返回数据
 
-        input wire data_sram_req,
-        input wire data_sram_wr,
-        input wire [1:0] data_sram_size,
-        input wire [31:0] data_sram_addr,
-        input wire [3:0] data_sram_wstrb,
-        input wire [31:0] data_sram_wdata,
+        // Dcache read
+        input wire dcache_rd_req,
+        input wire [2:0] dcache_rd_type, // 3'b000 byte 3'b001 half word 3'b010 word 3'b100 cache block
+        input wire [31:0] dcache_rd_addr,
 
-        output reg data_sram_addr_ok,
-        output reg data_sram_data_ok,
-        output reg [31:0] data_sram_rdata,
+        output wire dcache_rd_rdy,
+        output wire dcache_ret_valid,
+        output wire dcache_ret_last,
+        output wire [31:0] dcache_ret_data,
+
+        // Dcache write
+        input wire dcache_wr_req, // 写请求
+        input wire [2:0] dcache_wr_type, // 3'b000 byte 3'b001 half word 3'b010 word 3'b100 cache block (128b)
+        input wire [31:0] dcache_wr_addr, // 写地址
+        input wire [3:0] dcache_wr_wstrb, // 写字节掩码
+        input wire [127:0] dcache_wr_data, // 写数据
+        output wire dcache_wr_rdy, // 准备接收写请求
 
         /* 一个AXI主方 */
 
         // ar
-        output reg [3:0] arid, // 读请求ID
-        output reg [31:0] araddr, // 读请求地址
+        output wire [3:0] arid, // 读请求ID
+        output wire [31:0] araddr, // 读请求地址
         output wire [7:0] arlen, // 读请求传输长度
-        output reg [2:0] arsize, // 读请求传输大小
+        output wire [2:0] arsize, // 读请求传输大小
         output wire [1:0] arburst, // burst类型
         output wire [1:0] arlock, // 锁类型
         output wire [3:0] arcache, // 缓存类型
         output wire [2:0] arprot, // 保护属性
-        output reg arvalid, // master->slave 读请求地址握手信号，读请求地址有效
+        output wire arvalid, // master->slave 读请求地址握手信号，读请求地址有效
         input wire arready, // slave->master 读请求地址握手信号，从方准备好接受地址传输
 
         // r
@@ -45,13 +51,13 @@ module sram_to_axi_bridge_2_1 (
         input wire [1:0] rresp, // 本次读请求是否成功完成
         input wire rlast, // 是否为本次burst的最后一拍数据
         input wire rvalid, // slave -> master 读请求数据握手信号，读请求数据有效
-        output reg rready, // master -> slave 读请求数据握手信号，主方准备好接收数据传输
+        output wire rready, // master -> slave 读请求数据握手信号，主方准备好接收数据传输
 
         // aw
         output wire [3:0] awid, // 写请求ID
-        output reg [31:0] awaddr, // 写请求地址
+        output wire [31:0] awaddr, // 写请求地址
         output wire [7:0] awlen, // 写请求传输长度
-        output reg [2:0] awsize, // 写请求传输大小
+        output wire [2:0] awsize, // 写请求传输大小
         output wire [1:0] awburst, // burst类型
         output wire [1:0] awlock, // 锁
         output wire [3:0] awcache, // 缓存
@@ -63,7 +69,7 @@ module sram_to_axi_bridge_2_1 (
         output wire [3:0] wid, // 写请求ID
         output reg [31:0] wdata, // 写数据
         output reg [3:0] wstrb, // 写选通
-        output wire wlast, // 是否为最后一拍数据
+        output reg wlast, // 是否为最后一拍数据
         output reg wvalid, // master->slave 写请求数据握手信号，写请求数据有效
         input wire wready, // slave->master 写请求数据握手信号，从方准备好接收数据传输
 
@@ -74,247 +80,151 @@ module sram_to_axi_bridge_2_1 (
         output wire bready // 写请求响应握手信号，主方准备好接收写响应
     );
 
+    localparam IDLE = 3'b000;
+    localparam IC_RD = 3'b001;
+    localparam DC_RD = 3'b010;
 
-    reg inst_sram_req_d;
-    reg data_sram_req_d;
-    wire inst_sram_req_pulse;
-    wire data_sram_req_pulse;
-
+    reg state;
     always @(posedge clk) begin
         if (~resetn) begin
-            inst_sram_req_d <= 0;
-            data_sram_req_d <= 0;
+            state <= IDLE;
         end
         else begin
-            inst_sram_req_d <= inst_sram_req;
-            data_sram_req_d <= data_sram_req;
-        end
-    end
-    assign inst_sram_req_pulse = inst_sram_req & ~inst_sram_req_d;
-    assign data_sram_req_pulse = data_sram_req & ~data_sram_req_d;
-
-    wire req_type = data_sram_req_pulse ? 1 : 0; // 数据访问为1 指令访问为0
-
-    wire sram_req = req_type ? data_sram_req_pulse : inst_sram_req_pulse;
-    wire sram_wr = req_type ? data_sram_wr : inst_sram_wr;
-    wire [1:0] sram_size = req_type ? data_sram_size : inst_sram_size;
-    wire [31:0] sram_addr = req_type ? data_sram_addr : inst_sram_addr;
-    wire [3:0] sram_wstrb = req_type ? data_sram_wstrb : inst_sram_wstrb;
-    wire [31:0] sram_wdata = req_type ? data_sram_wdata : inst_sram_wdata;
-
-
-    parameter AR_IDLE = 2'b00;
-    parameter AR_WAIT = 2'b01;
-
-    reg [1:0] ar_state;
-    parameter AW_W_IDLE = 2'b00;
-    parameter AW_W_ADDR = 2'b01;
-    parameter AW_W_DATA = 2'b10;
-    parameter B_WAIT = 2'b11;
-    reg [1:0] aw_w_state;
-
-    reg b_has_resp;
-
-
-    // ar
-    assign arlen = 0;
-    // arsize
-    assign arburst = 2'b01; // sequential
-    assign arlock = 0;
-    assign arcache = 0;
-    assign arprot = 0;
-
-    reg cached_sram_req;
-    reg cached_sram_wr;
-    reg [3:0 ] cached_arid;
-    reg [31:0] cached_araddr;
-    reg [2:0] cached_arsize;
-
-    // arvalid
-    // arready
-    always @(posedge clk) begin
-        if (~resetn) begin
-            cached_sram_req <= 0;
-            cached_sram_wr <= 0;
-            cached_arid <= 4'b0;
-            cached_araddr <= 32'b0;
-            cached_arsize <= 3'b0;
-
-            ar_state <= AR_IDLE;
-
-            arid <= 4'b0;
-            araddr <= 32'b0;
-            arsize <= 3'b0;
-            arvalid <= 0;
-        end
-        else begin
-			if (data_sram_req_pulse && inst_sram_req_pulse) begin
-				// 数据操作比指令操作优先
-				cached_sram_req <= inst_sram_req_pulse;
-				cached_sram_wr <= inst_sram_wr;
-				cached_arid <= 0;
-				cached_araddr <= inst_sram_addr;
-				cached_arsize <= {1'b0,inst_sram_size};
-			end
-            else if (sram_req && !sram_wr && (aw_w_state != AW_W_IDLE || ar_state != AR_IDLE)) begin
-                // 缓存读请求
-                cached_sram_req <= sram_req;
-                cached_sram_wr <= sram_wr;
-                cached_arid <= req_type;
-                cached_araddr <= sram_addr;
-                cached_arsize <= {1'b0,sram_size};
-            end
-            case (ar_state)
-                AR_IDLE: begin
-                    if (cached_sram_req && !cached_sram_wr && aw_w_state==AW_W_IDLE) begin
-                        arid <= cached_arid;
-                        araddr <= cached_araddr;
-                        arsize <= cached_arsize;
-                        arvalid <= 1;
-                        ar_state <= AR_WAIT;
-                        cached_sram_req <= 0; // 清除缓存
+            case (state)
+                IDLE: begin
+                    if (dcache_rd_req) begin
+                        state <= DC_RD;
                     end
-                    else if (sram_req && !sram_wr&& aw_w_state==AW_W_IDLE) begin
-                        arid <= req_type;
-                        araddr <= sram_addr;
-                        arsize <= {1'b0, sram_size};
-                        arvalid <= 1;
-                        ar_state <= AR_WAIT;
+                    else if (icache_rd_req) begin
+                        state <= IC_RD;
                     end
                 end
-                AR_WAIT: begin
-                    if (arvalid && arready) begin
-                        arvalid <= 0;
-                        ar_state <= AR_IDLE;
+                IC_RD: begin
+                    if (rvalid&&rlast) begin
+                        if (dcache_rd_req) begin
+                            state <= DC_RD;
+                        end
+                        else begin
+                            state <= IDLE;
+                        end
                     end
                 end
-                default:
-                    ar_state <= AR_IDLE;
+                DC_RD: begin
+                    if (rvalid&&rlast) begin
+                        if (icache_rd_req) begin
+                            state <= IC_RD;
+                        end
+                        else begin
+                            state <= IDLE;
+                        end
+                    end
+                end
             endcase
         end
     end
 
+    // REQ MUX
     // r
-    always @(posedge clk) begin
-        if (~resetn) begin
-            rready <= 1;
-        end
+    assign arvalid = icache_rd_req | dcache_rd_req;
+    assign arid = dcache_rd_req ? 1 :
+           0;
+    assign araddr = dcache_rd_req ? dcache_rd_addr :
+           /*icache_rd_req */ icache_rd_addr ;
 
-        if (rvalid && rready) begin
-            if (rid) begin
-                data_sram_rdata <= rdata;
-            end
-            else begin
-                inst_sram_rdata <= rdata;
-            end
-        end
-    end
-    // aw
+    assign arlen = 7'b011; // len = 3 + 1 = 4
+    assign arsize = 3'b010 ; // size = 2 ^ 2 = 4 byte
+    assign arburst = 2'b01; // add
+    assign arlock = 0;
+    assign arcache = 0;
+    assign arprot = 0;
+    assign rready = 1;
+
+
+    // 状态机组合逻辑
+    assign icache_rd_rdy = arready & icache_rd_req;
+    assign icache_ret_valid = rvalid & state==IC_RD;
+    assign icache_ret_last = rlast & state==IC_RD;
+    assign icache_ret_data = state==IC_RD ? rdata : 32'b0;
+
+    assign dcache_rd_rdy = arready & dcache_rd_req;
+    assign dcache_ret_valid = rvalid & state==DC_RD;
+    assign dcache_ret_last = rlast & state==DC_RD;
+    assign dcache_ret_data = state==DC_RD ? rdata : 32'b0;
+
+    localparam DC_WR_WAIT = 3'b011;
+    localparam DC_WR = 3'b100;
+    localparam DC_WR1 = 3'b101;
+    localparam DC_WR2 = 3'b110;
+
+    // aw/w
     assign awid = 1;
-    assign awlen = 0;
+    assign awaddr = dcache_wr_addr;
+    assign awlen = 7'b011;
+    assign awsize = 3'b010;
     assign awburst = 2'b01;
     assign awlock = 0;
     assign awcache = 0;
     assign awprot = 0;
-    // w
+
     assign wid = 1;
-    assign wlast = 1;
 
 
-    // aw & w
+    reg [127:0] wr_buffer;
+    reg [2:0] w_state;
     always @(posedge clk) begin
         if (~resetn) begin
-            aw_w_state <= AW_W_IDLE;
-            awsize <= 3'b0;
-            awvalid <= 0;
-            awaddr <= 32'b0;
-
-            wvalid <= 0;
-            wstrb <= 4'b0;
-            wdata <= 32'b0;
+            wr_buffer <= 128'b0;
+            w_state <= IDLE;
         end
-        case (aw_w_state)
-            AW_W_IDLE: begin
-                if (sram_req && sram_wr) begin
-                    aw_w_state <= AW_W_ADDR;
-                    awvalid <= 1;
-                    awsize <= {1'b0,data_sram_size};
-                    awaddr <= data_sram_addr;
-                end
-            end
-            AW_W_ADDR: begin
-                if (awvalid && awready) begin
-                    aw_w_state <= AW_W_DATA;
-                    awvalid <= 0;
-
-                    wvalid <= 1;
-                    wdata <= data_sram_wdata;
-                    wstrb <= data_sram_wstrb;
-                end
-            end
-            AW_W_DATA: begin
-                if (wvalid && wready && wlast) begin
-                    aw_w_state <= B_WAIT;
+        case (w_state)
+            IDLE: begin
+                if (wready) begin
                     wvalid <= 0;
+                    wlast <= 0;
+                end
+                if (dcache_wr_req) begin
+                    wr_buffer <= dcache_wr_data;
+                    wstrb <= dcache_wr_wstrb;
+					awvalid <= 1;
+
+                    w_state <= DC_WR_WAIT;
                 end
             end
-            B_WAIT: begin
-                if (bvalid && bready) begin
-                    aw_w_state <= AW_W_IDLE;
+            DC_WR_WAIT: begin
+                if (awready) begin
+                    w_state <= DC_WR;
+
+					awvalid <= 0;
+                    wdata <= wr_buffer[31:0];
+                    wvalid <= 1;
                 end
             end
-            default:
-                aw_w_state <= AW_W_IDLE;
+            DC_WR: begin
+                if (wready) begin
+                    w_state <= DC_WR1;
+
+                    wdata <= wr_buffer[63:32];
+                end
+            end
+            DC_WR1: begin
+                if (wready) begin
+                    w_state <= DC_WR2;
+
+                    wdata <= wr_buffer[95:64];
+                end
+            end
+            DC_WR2: begin
+                if (wready) begin
+                    w_state <= IDLE;
+
+                    wdata <= wr_buffer[127:96];
+                    wlast <= 1;
+                end
+            end
         endcase
     end
 
-    assign bready = 1;
-    // b
-    // always @(posedge clk) begin
-    //     if (~resetn) begin
-    //         bready <= 1;
-    // 		b_has_resp <= 0;
-    //     end
-    // 	if (bvalid && bready) begin
-    // 	end
-    // end
+    assign dcache_wr_rdy = w_state==IDLE;
 
-    // ok signal
-    always @(posedge clk) begin
-        if (~resetn) begin
-            data_sram_addr_ok <= 0;
-            inst_sram_addr_ok <= 0;
-            data_sram_data_ok <= 0;
-            inst_sram_data_ok <= 0;
-        end
-        else begin
-            data_sram_addr_ok <= 0;
-            inst_sram_addr_ok <= 0;
-            data_sram_data_ok <= 0;
-            inst_sram_data_ok <= 0;
-
-            if (arvalid && arready) begin
-                if (arid)
-                    data_sram_addr_ok <= 1;
-                else
-                    inst_sram_addr_ok <= 1;
-            end
-
-            if (wvalid && wready) begin
-                data_sram_addr_ok <= 1;
-            end
-
-            if (rvalid && rready) begin
-                if (rid)
-                    data_sram_data_ok <= 1;
-                else
-                    inst_sram_data_ok <= 1;
-            end
-
-            if (bvalid && bready) begin
-                data_sram_data_ok <= 1;
-            end
-        end
-    end
 
 endmodule

@@ -9,8 +9,9 @@ module core #
         // inst sram interface bus
         output reg		   inst_sram_req, // 请求信号 1表示有读写请求，0表示无读写请求
         output wire        inst_sram_wr, // 为1表示该次是写请求，0表示是读请求
-        output wire	[1:0]  inst_sram_size, // 请求传输字节数 0:1字节 1:2字节 2:4字节
-        output wire [31:0] inst_sram_addr, //
+        output wire [7:0]  inst_sram_index, // cache index =  vaddr[11:4]
+        output wire [19:0] inst_sram_tag, // tag = paddr[31:12]
+        output wire [3:0]  inst_sram_offset, // offset = vaddr[3:0]
         output wire [3:0]  inst_sram_wstrb, // 该次字节写使能
         output wire [31:0] inst_sram_wdata, //
         input  wire		   inst_sram_addr_ok, // 该次请求地址传输OK 读：地址被接收 写：地址和数据被接收
@@ -19,8 +20,10 @@ module core #
         // data sram interface bus
         output reg		   data_sram_req,
         output wire        data_sram_wr,
-        output wire [1:0]  data_sram_size,
-        output wire [31:0] data_sram_addr,
+        // output wire [1:0]  data_sram_size,
+        output wire [7:0]  data_sram_index, // cache index =  vaddr[11:4]
+        output wire [19:0] data_sram_tag, // tag = paddr[31:12]
+        output wire [3:0]  data_sram_offset, // offset = vaddr[3:0]
         output wire [3:0]  data_sram_wstrb,
         output wire [31:0] data_sram_wdata,
         input  wire        data_sram_addr_ok,
@@ -244,28 +247,29 @@ module core #
     reg cancel_inst;
     reg exception_cancel_flag;
     reg [31:0] cached_npc;
+    reg [31:0] cached_inst;
     always @(posedge clk) begin
         if (reset) begin
             cancel_inst <= 0;
             exception_cancel_flag <= 0;
             cached_npc <= 32'b0;
+            cached_inst <= 32'b0;
         end
         if (wb_has_exception || wb_id_ertn_flush || wb_pref_refetch) begin
             exception_cancel_flag <= 1;
             cached_npc <= nextpc; // 异常处理程序入口
         end
-		else if ((if_allowin && inst_sram_req == 0) && !waiting_for_inst) begin
-			if (exception_cancel_flag) begin
-				exception_cancel_flag <= 0;
-			end
-			else if (cancel_inst) begin
-				cancel_inst <= 0;
-			end
-		end
+        else if ((if_allowin && inst_sram_req == 0) && !waiting_for_inst) begin
+            if (exception_cancel_flag) begin
+                exception_cancel_flag <= 0;
+            end
+            else if (cancel_inst) begin
+                cancel_inst <= 0;
+            end
+        end
         else if (br_taken_cancel) begin
             cancel_inst <= 1;
             cached_npc <= nextpc; // 跳转目标
-
         end
     end
 
@@ -295,15 +299,16 @@ module core #
         end
         else if (inst_sram_data_ok && waiting_for_inst) begin
             waiting_for_inst <= 0;
+            cached_inst <= inst_sram_rdata;
         end
     end
 
     wire pref_refetch = //out_crmd_pg &&
-	// 流水线中有写 DA PG DMW0 DMW1 ASID 即CSRWR 这些 以及TLBRD  TODO:在PG翻译模式下才判断
+         // 流水线中有写 DA PG DMW0 DMW1 ASID 即CSRWR 这些 以及TLBRD  TODO:在PG翻译模式下才判断
          (id_valid&&(csr_we&&(csr==`CSR_CRMD || csr==`CSR_CRMD || csr==`CSR_DMW0 || csr==`CSR_DMW1 || csr==`CSR_ASID) || tlbrd_op || tlbwr_op || tlbfill_op || invtlb_valid )
-         || ex_valid&&(ex_csr_we&&(ex_csr==`CSR_CRMD || ex_csr==`CSR_CRMD || ex_csr==`CSR_DMW0 || ex_csr==`CSR_DMW1 || ex_csr==`CSR_ASID) || ex_tlbrd_op || ex_tlbwr_op || ex_tlbfill_op || ex_invtlb_valid)
-         || mem_valid&&(mem_csr_we&&(mem_csr==`CSR_CRMD || mem_csr==`CSR_CRMD || mem_csr==`CSR_DMW0 || mem_csr==`CSR_DMW1 || mem_csr==`CSR_ASID) || mem_tlbrd_op || mem_tlbwr_op || mem_tlbfill_op || mem_invtlb_valid) // invtlb在ex段执行完，那么在ex之后就应该触发重取指 此处为了简化设计都是在WB段触发重取指
-         || wb_valid&&(wb_csr_we&&(wb_csr_num==`CSR_CRMD || wb_csr_num==`CSR_CRMD || wb_csr_num==`CSR_DMW0 || wb_csr_num==`CSR_DMW1 || wb_csr_num==`CSR_ASID) || wb_tlbrd_op || wb_tlbwr_op || wb_tlbfill_op || wb_invtlb_valid));
+          || ex_valid&&(ex_csr_we&&(ex_csr==`CSR_CRMD || ex_csr==`CSR_CRMD || ex_csr==`CSR_DMW0 || ex_csr==`CSR_DMW1 || ex_csr==`CSR_ASID) || ex_tlbrd_op || ex_tlbwr_op || ex_tlbfill_op || ex_invtlb_valid)
+          || mem_valid&&(mem_csr_we&&(mem_csr==`CSR_CRMD || mem_csr==`CSR_CRMD || mem_csr==`CSR_DMW0 || mem_csr==`CSR_DMW1 || mem_csr==`CSR_ASID) || mem_tlbrd_op || mem_tlbwr_op || mem_tlbfill_op || mem_invtlb_valid) // invtlb在ex段执行完，那么在ex之后就应该触发重取指 此处为了简化设计都是在WB段触发重取指
+          || wb_valid&&(wb_csr_we&&(wb_csr_num==`CSR_CRMD || wb_csr_num==`CSR_CRMD || wb_csr_num==`CSR_DMW0 || wb_csr_num==`CSR_DMW1 || wb_csr_num==`CSR_ASID) || wb_tlbrd_op || wb_tlbwr_op || wb_tlbfill_op || wb_invtlb_valid));
 
     wire [31:0] inst_sram_vaddr = pref_adef ? 32'h1c000000 : pc;
 
@@ -327,7 +332,7 @@ module core #
          {out_dmw1[`CSR_DMW1_PSEG],inst_sram_vaddr[28:0]}: // 特权等级不合规相当于不命中，只进入页表映射模式，不在此时发出异常
          inst_sram_vaddr ;
     // TLB地址翻译部件
-	wire inst_use_tlb = out_crmd_pg && !inst_hit_dmw0 && !inst_hit_dmw1;
+    wire inst_use_tlb = out_crmd_pg && !inst_hit_dmw0 && !inst_hit_dmw1;
     assign {s0_vppn,s0_va_bit12} = inst_sram_vaddr[31:12];
     assign s0_asid = out_asid_asid;
     wire [31:0] inst_sram_tlbaddr = {s0_ppn,inst_sram_vaddr[11:0]};
@@ -345,9 +350,12 @@ module core #
 
 
     assign inst_sram_wr = 0;
-    assign inst_sram_size = 2'h2;
+    // assign inst_sram_size = 2'h2;
     assign inst_sram_wstrb    = 4'b0;
-    assign inst_sram_addr  = inst_sram_paddr; // 发生取指地址错时将PC置默认值
+    // assign inst_sram_addr  = inst_sram_paddr; // 发生取指地址错时将PC置默认值
+    assign inst_sram_index = inst_sram_vaddr[11:4];
+    assign inst_sram_tag = inst_sram_paddr[31:12];
+    assign inst_sram_offset = inst_sram_vaddr[3:0];
     assign inst_sram_wdata = 32'b0;
 
     /*------IF------*/
@@ -807,7 +815,7 @@ module core #
     wire [31:0] data_sram_tlbaddr = {s1_ppn,data_sram_vaddr[11:0]};
 
     // 异常  tlbr > pi* > ppi > pme
-	wire data_use_tlb = out_crmd_pg && !data_hit_dmw0 && !data_hit_dmw1;
+    wire data_use_tlb = out_crmd_pg && !data_hit_dmw0 && !data_hit_dmw1;
     wire ex_tlbr = out_crmd_pg ? !s1_found && ex_mem_op && data_use_tlb : 0;
     wire ex_pil = out_crmd_pg ? !s1_v && ex_op_load && !ex_tlbr && data_use_tlb: 0;
     wire ex_pis = out_crmd_pg ? !s1_v && ex_op_store && !ex_tlbr && data_use_tlb: 0;
@@ -827,7 +835,9 @@ module core #
            (ex_mem_half) ? 2'b01 : // 写传输size=4靠写掩码写位 读定义传输size
            2'b10;
     assign data_sram_wstrb    = mem_we & {4{valid}};
-    assign data_sram_addr  = data_sram_paddr;
+    assign data_sram_index = data_sram_vaddr[11:4];
+	assign data_sram_tag = data_sram_paddr[31:12];
+	assign data_sram_offset = data_sram_vaddr[3:0];
     assign data_sram_wdata = ex_op_st_b ? {4{ex_rkd_value[7:0]}} :
            ex_op_st_h ? {2{ex_rkd_value[15:0]}} :
            ex_rkd_value;
@@ -1197,17 +1207,17 @@ module core #
 
         if (validin && if_allowin) begin
             if_reg[31:0] <= pc;
-			if_reg[32] <= pref_refetch; // 为什么别的pref生成的标志不用传输？ 因为别的都是根据pc计算的，这个是根据流水线状态
+            if_reg[32] <= pref_refetch; // 为什么别的pref生成的标志不用传输？ 因为别的都是根据pc计算的，这个是根据流水线状态
         end
     end
 
     wire [31:0] if_pc;
     wire [31:0] if_data_in;
-	wire if_pref_refetch;
+    wire if_pref_refetch;
 
     assign if_pc = if_reg[31:0];
-    assign if_data_in = inst_sram_rdata;
-	assign if_pref_refetch = if_reg[32];
+    assign if_data_in = cached_inst;
+    assign if_pref_refetch = if_reg[32];
 
     // id stage
 

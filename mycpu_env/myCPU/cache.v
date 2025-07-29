@@ -70,12 +70,12 @@ module cache(
     end
     assign valid_pulse = valid & ~valid_d;
 
-    parameter IDLE = 3'b000;
-    parameter LOOKUP = 3'b001;
-    parameter MISS = 3'b010;
-    parameter REPLACE = 3'b011;
-    parameter REFILL = 3'b100;
-    parameter WRITE = 3'b101;
+    localparam IDLE = 3'b000;
+    localparam LOOKUP = 3'b001;
+    localparam MISS = 3'b010;
+    localparam REPLACE = 3'b011;
+    localparam REFILL = 3'b100;
+    localparam WRITE = 3'b101;
     reg [2:0] m_state,w_state;
     reg written;
     reg refill_write_en;
@@ -147,7 +147,7 @@ module cache(
 	assign addr_ok = (m_state==IDLE&&valid || (m_state==LOOKUP&&cache_hit&&valid&&!wr_rd_relate))&&!addr_overlap;
 	assign data_ok = m_state==LOOKUP&&cache_hit || m_state==REFILL&&ret_valid&&n_ret_32==reg_bank;
 	assign rdata = m_state==LOOKUP&&cache_hit ? load_res : m_state==REFILL&&ret_valid&&n_ret_32==reg_bank ? ret_data : 32'b0;
-    assign rd_req = m_state==REPLACE&&rd_rdy;
+    assign rd_req = m_state==REPLACE;
     assign rd_type = 3'b100;
     assign rd_addr = {reg_tag,reg_index,4'b0};
 
@@ -181,7 +181,7 @@ module cache(
     /*------MISS Buffer------*/
     reg replace_way;
     reg [127:0] miss_buffer_wdata;
-    wire [127:0] next_data = {miss_buffer_wdata[127:32],ret_data};
+    wire [127:0] next_data = {ret_data,miss_buffer_wdata[95:0]};
     reg [1:0] n_ret_32; // AXI总线返回了几个32位数据
     always @(posedge clk) begin
         if (~resetn) begin
@@ -201,7 +201,7 @@ module cache(
                 if(ret_last)
                     miss_buffer_wdata <= next_data;
                 else
-                    miss_buffer_wdata <= next_data << 32;
+                    miss_buffer_wdata <= next_data >> 32;
             end
         end
     end
