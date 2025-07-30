@@ -1293,7 +1293,7 @@ module core #
             if (wb_id_ertn_flush | wb_has_exception | mem_has_exception | ex_has_exception | id_has_exception | exception_cancel_flag | wb_pref_refetch) begin
                 id_valid <= 1'b0;
             end
-            else if (br_taken_cancel || cancel_inst) begin
+            else if (br_taken_cancel || cancel_inst) begin // TODO: 只用cancel_inst
                 id_valid <= 1'b0; // 控制相关
             end
             else begin
