@@ -35,6 +35,7 @@ module dcache(
     reg [19:0] reg_tag;
     reg reg_op;
     reg [1:0] reg_mat;
+	reg [3:0] reg_offset;
     reg [1:0] reg_bank;
     reg [7:0] reg_index;
     reg [3:0] reg_wstrb;
@@ -58,6 +59,7 @@ module dcache(
                 reg_wstrb <= wstrb;
                 reg_wdata <= wdata;
                 reg_mat <= mat;
+				reg_offset <= offset;
             end
         end
     end
@@ -124,26 +126,31 @@ module dcache(
                     if (~written) begin
                         written <= 1;
                     end
-                    if (reg_mat=2'b01) begin
+                    if (reg_mat==2'b01) begin
                         if (rd_rdy) begin
                             m_state <= REFILL;
                             refill_write_en <= 0;
                         end
-					end else if (reg_mat==2'b00) begin
-						if(reg_op==0&&rd_rdy) begin
-							m_state <= REFILL;
-							refill_write_en <= 0;
-						end else if (reg_op==1) begin
-							m_state <= REFILL;
-							refill_write_en <= 0;
-						end
-					end
+                    end
+                    else if (reg_mat==2'b00) begin
+                        if(reg_op==0&&rd_rdy) begin
+                            m_state <= REFILL;
+                            refill_write_en <= 0;
+                        end
+                        else if (reg_op==1) begin
+                            m_state <= REFILL;
+                            refill_write_en <= 0;
+                        end
+                    end
                 end
                 REFILL: begin
                     if (ret_valid==1&&n_ret_32==reg_bank&&reg_mat==2'b01) begin
                         rdata_buf <= ret_data;
                     end
                     if (ret_valid==1&&ret_last==1) begin
+                        refill_write_en <= 1;
+                    end
+                    else if (reg_mat==2'b00&&reg_op&&wr_rdy) begin
                         refill_write_en <= 1;
                     end
                     if (refill_write_en) begin
@@ -158,15 +165,23 @@ module dcache(
     assign wr_rd_relate = !op && reg_op && tag==reg_tag && index==reg_index;
     wire addr_overlap = w_state==WRITE && !op && tag==reg_tag && index==w_index && offset[3:2]==w_bank;
     assign addr_ok = (m_state==IDLE&&valid || (reg_mat==2'b01&&m_state==LOOKUP&&cache_hit&&valid&&!wr_rd_relate))&&!addr_overlap;
-    assign data_ok = (m_state==LOOKUP&&cache_hit || m_state==REFILL&&ret_valid&&n_ret_32==reg_bank)&&reg_mat==2'b01 || reg_mat==2'b00&&m_state==REFILL&&ret_valid&&ret_last;
-    assign rd_req = reg_mat==2'b01 ? m_state==REPLACE : reg_op==0&&m_state==REPLACE;
-    assign rd_type = reg_mat==2'b00 ? 3'b010 :
+    assign data_ok = (m_state==LOOKUP&&cache_hit || m_state==REFILL&&ret_valid&&n_ret_32==reg_bank)&&reg_mat==2'b01 || (reg_mat==2'b00&&m_state==REFILL&&ret_valid&&ret_last || reg_mat==2'b00&&m_state==REFILL&&reg_op&&wr_rdy);
+    assign rd_req = (reg_mat==2'b01) ? m_state==REPLACE : reg_op==0&&m_state==REPLACE;
+    assign rd_type = (reg_mat==2'b00) ? 3'b010 :
            3'b100;
-    assign rd_addr = {reg_tag,reg_index,4'b0};
-    assign rdata =reg_mat==2'b01 ? (m_state==LOOKUP&&cache_hit ? load_res :
-                                    m_state==REFILL&&ret_valid&&n_ret_32==reg_bank ? ret_data : rdata_buf) :
-           ret_data;
+    assign rd_addr = {reg_tag,reg_index,sel_offset};
+    assign rdata =(reg_mat==2'b01) ? (m_state==LOOKUP&&cache_hit ? load_res :
+                                      m_state==REFILL&&ret_valid&&n_ret_32==reg_bank ? ret_data : rdata_buf) :
+           (ret_valid&&ret_last) ? ret_data : ret_data_buf;
 
+	reg [31:0] ret_data_buf;
+	always @(posedge clk) begin
+		if (~resetn ) begin
+			ret_data_buf <= 32'b0;
+		end else if (ret_valid&&ret_last&&reg_mat==2'b00) begin
+			ret_data_buf <= ret_data;
+		end
+	end
 
     wire [19:0] replace_tag;
     wire replace_d;
@@ -177,11 +192,16 @@ module dcache(
     assign replace_v = replace_way ? way1_v : way0_v;
     assign replace_line = replace_way ? way1_data : way0_data;
     assign wr_req = (m_state==REPLACE&&!written)&&replace_d&&replace_v&&reg_mat==2'b01 || (m_state==REPLACE&&!written)&&(reg_mat==2'b00)&&reg_op;
-    assign wr_type = reg_mat==2'b00 ? 3'b010 : 3'b100;
+    assign wr_type = (reg_mat==2'b00) ? 3'b010 : 3'b100;
     // TODO: 强序非缓存访问的读写地址是否还是这样生成呢？
-    assign wr_addr = {reg_mat==2'b01?replace_tag:reg_tag,reg_index,4'b0};
-    assign wr_wstrb = reg_mat==2'b01 ? (replace_d ? 4'hf : 4'h0) : (reg_op ? reg_wstrb : 4'h0);
-    assign wr_data = reg_mat==2'b01 ? replace_line : {96'b0,reg_wdata};
+
+    wire [19:0] sel_tag;
+	wire [3:0] sel_offset;
+    assign sel_tag = (reg_mat==2'b01)?replace_tag:reg_tag;
+	assign sel_offset = (reg_mat==2'b01)?4'b0:reg_offset;
+    assign wr_addr = {sel_tag,reg_index,sel_offset};
+    assign wr_wstrb = (reg_mat==2'b01) ? (replace_d ? 4'hf : 4'h0) : (reg_op ? reg_wstrb : 4'h0);
+    assign wr_data = (reg_mat==2'b01) ? replace_line : {96'b0,reg_wdata};
 
 
     // output declaration of module lfsr_random_8bit
@@ -286,8 +306,8 @@ module dcache(
     wire [1:0] tagv_we;
     wire [20:0] tagv_wdata;
     wire way0_v,way1_v;
-    assign tagv_index = m_state==IDLE?index:reg_index;
-    assign tagv_we = reg_mat==2'b01&&m_state==REFILL ? (replace_way ? 2'b10 : 2'b01) : 2'b00;
+    assign tagv_index = (m_state==IDLE)?index:reg_index;
+    assign tagv_we = (reg_mat==2'b01&&m_state==REFILL) ? (replace_way ? 2'b10 : 2'b01) : 2'b00;
     assign tagv_wdata = {reg_tag,1'b1};
     tagv_ram Way0_tagv_ram
              (
@@ -350,18 +370,18 @@ module dcache(
                reg_wstrb[2]?reg_wdata[23:16]:miss_buffer_wdata[23:16],
                reg_wstrb[1]?reg_wdata[15:8]:miss_buffer_wdata[15:8],
                reg_wstrb[0]?reg_wdata[7:0]:miss_buffer_wdata[7:0]};
-    assign aligned_w_wdata = w_bank==2'b11 ? {w_wdata,96'b0} :
-           w_bank==2'b10 ? {32'b0,w_wdata,64'b0} :
-           w_bank==2'b01 ? {64'b0,w_wdata,32'b0} :
+    assign aligned_w_wdata = (w_bank==2'b11) ? {w_wdata,96'b0} :
+           (w_bank==2'b10) ? {32'b0,w_wdata,64'b0} :
+           (w_bank==2'b01) ? {64'b0,w_wdata,32'b0} :
            {96'b0,w_wdata};
-    assign ram_index = w_state==WRITE ? w_index :
-           m_state==IDLE ? index :
+    assign ram_index = (w_state==WRITE) ? w_index :
+           (m_state==IDLE) ? index :
            reg_index;
     assign ram_wdata = (w_state==WRITE)?aligned_w_wdata:
            reg_op ? refill_reg_wdata : // 如果refill是store
            miss_buffer_wdata;
     assign Way1_wstrb =
-           (w_mat&&w_way&&w_state==WRITE) ? (w_wstrb<<(w_bank*4)) :
+           (w_way&&w_state==WRITE) ? (w_wstrb<<(w_bank*4)) :
            (reg_mat==2'b01&&m_state==REFILL&&refill_write_en&&replace_way) ? 16'hffff : 16'h0;
     assign Way0_wstrb =
            (~w_way&&w_state==WRITE) ? (w_wstrb<<(w_bank*4)) :
@@ -455,8 +475,8 @@ module dcache(
     wire way0_we;
     wire way1_we;
     wire [7:0] d_index;
-    assign d_index = m_state==IDLE?index:
-           w_state==WRITE?w_index:reg_index;
+    assign d_index = (m_state==IDLE)?index:
+           (w_state==WRITE)?w_index:reg_index;
     assign way1_we = (w_state==WRITE&&w_way || (reg_mat==2'b01&&m_state==REFILL&&replace_way)) ? 1 : 0;
     assign way0_we = (w_state==WRITE&&!w_way || reg_mat==2'b01&&m_state==REFILL&&!replace_way) ? 1 : 0;
 

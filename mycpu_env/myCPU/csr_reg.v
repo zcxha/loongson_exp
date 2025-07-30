@@ -70,6 +70,7 @@ module csr_reg(
 	assign out_estat_ecode = csr_estat_ecode;
 	assign out_crmd_da = csr_crmd_da;
 	assign out_crmd_pg = csr_crmd_pg;
+	assign out_crmd_datm = csr_crmd_datm;
 	assign out_dmw0 = csr_dmw0_rvalue;
 	assign out_dmw1 = csr_dmw1_rvalue;
 	assign out_crmd_plv = csr_crmd_plv;

@@ -831,7 +831,7 @@ module core #
            data_sram_tlbaddr;
 
     assign data_sram_mat = out_crmd_da ? out_crmd_datm :
-           data_hit_dwm0 ? out_dmw0[`CSR_DMW0_MAT] :
+           data_hit_dmw0 ? out_dmw0[`CSR_DMW0_MAT] :
            data_hit_dmw1 ? out_dmw1[`CSR_DMW1_MAT] :
            s1_mat;
 
@@ -844,7 +844,6 @@ module core #
     assign data_sram_index = data_sram_vaddr[11:4];
     assign data_sram_tag = data_sram_paddr[31:12];
     assign data_sram_offset = data_sram_vaddr[3:0];
-    assign data_sram_mat == 2'b00;
     assign data_sram_wdata = ex_op_st_b ? {4{ex_rkd_value[7:0]}} :
            ex_op_st_h ? {2{ex_rkd_value[15:0]}} :
            ex_rkd_value;
@@ -1294,7 +1293,7 @@ module core #
             if (wb_id_ertn_flush | wb_has_exception | mem_has_exception | ex_has_exception | id_has_exception | exception_cancel_flag | wb_pref_refetch) begin
                 id_valid <= 1'b0;
             end
-            else if (br_taken_cancel) begin
+            else if (br_taken_cancel || cancel_inst) begin
                 id_valid <= 1'b0; // 控制相关
             end
             else begin

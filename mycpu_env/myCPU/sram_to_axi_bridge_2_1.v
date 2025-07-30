@@ -108,28 +108,26 @@ module sram_to_axi_bridge_2_1 (
         end
         case (ar_state)
             AR_IDLE: begin
+                handshake_ok <= 2'b0;
+
                 if (aw_w_state==AW_W_IDLE) begin
                     if (dcache_rd_req) begin
                         req_type <= 1;
                         arvalid <= 1;
-                        arlen <= dcache_rd_type==3'b010 ? 7'b001 :7'b011;
+                        arlen <= dcache_rd_type==3'b010 ? 7'b000 :7'b011;
                         arsize <= 3'b010;
 
                         rready <= 0;
-
-                        handshake_ok <= 2'b0;
 
                         ar_state <= AR_WAIT;
                     end
                     else if (icache_rd_req) begin
                         req_type <= 0;
                         arvalid <= 1;
-                        arlen <= icache_rd_type==3'b010 ? 7'b001 :7'b011;
+                        arlen <= icache_rd_type==3'b010 ? 7'b000 :7'b011;
                         arsize <= 3'b010;
 
                         rready <= 0;
-
-                        handshake_ok <= 2'b0;
 
                         ar_state <= AR_WAIT;
                     end
@@ -173,7 +171,7 @@ module sram_to_axi_bridge_2_1 (
 
     // aw/w
     assign awid = {3'b0,1};
-    assign awlen = 7'b011;
+    assign awlen = dcache_wr_type==3'b010 ? 7'b000 : 7'b011;
     assign awsize = 3'b010;
     assign awburst = 2'b01;
     assign awlock = 0;
@@ -251,9 +249,9 @@ module sram_to_axi_bridge_2_1 (
                         end
                     end
                     else if (dcache_wr_type==3'b010) begin // 强序非缓存访问
-						wvalid <= 0;
-						wlast <= 0;
-						
+                        wvalid <= 0;
+                        wlast <= 0;
+
                         aw_w_state <= B_WAIT;
                     end
                 end

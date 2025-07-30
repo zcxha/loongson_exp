@@ -10,29 +10,31 @@ module cache(
         input wire [3:0] offset, // vaddr[3:0]
         input wire [3:0] wstrb,
         input wire [31:0] wdata,
-        output wire addr_ok, // 读：地�?�被接收 写：地�?�和数�?�被接收
-        output wire data_ok, // 读：数�?�返回 写：数�?�写入完�?
+        input wire [1:0] mat, // 2'b00 强序非缓存 2'b01 一致可缓存
+        output wire addr_ok, // 读：地址被接收 写：地址和数据被接收
+        output wire data_ok, // 读：数据返回 写：数据写入完成
         output wire [31:0] rdata,
 
         /// cache - AXI bus
         output wire rd_req, // 读请求
-        output wire [2:0] rd_type, // 3'b000-字节 3'b001-�?�字 3'b010-字 3'b100 cache行
-        output wire [31:0] rd_addr, // 读请求起始地�?�
-        input wire rd_rdy, // 读请求能�?�被接收的�?�手信�?�
-        input wire ret_valid, // 返回数�?�有效信�?�
-        input wire ret_last, // 最�?�一次返回数�?�
-        input wire [31:0] ret_data, // 返回数�?�
+        output wire [2:0] rd_type, // 3'b000-字节 3'b001-半字 3'b010-字 3'b100 cache行  // 先尝试强序非缓存都是按字读写
+        output wire [31:0] rd_addr, // 读请求起始地址
+        input wire rd_rdy, // 读请求能否被接收的握手信号
+        input wire ret_valid, // 返回数据有效信号
+        input wire ret_last, // 最后一次返回数据
+        input wire [31:0] ret_data, // 返回数据
 
         output wire wr_req, // 写请求
         output wire [2:0] wr_type,
         output wire [31:0] wr_addr,
         output wire [3:0] wr_wstrb,
         output wire [127:0] wr_data,
-        input wire wr_rdy // 写请求能�?�被接收
+        input wire wr_rdy // 写请求能否被接收
     );
 
     reg [19:0] reg_tag;
     reg reg_op;
+    reg [1:0] reg_mat;
     reg [1:0] reg_bank;
     reg [7:0] reg_index;
     reg [3:0] reg_wstrb;
@@ -45,15 +47,17 @@ module cache(
             reg_index <= 8'b0;
             reg_wstrb <= 4'b0;
             reg_wdata <= 32'b0;
+            reg_mat <= 2'b00;
         end
         else begin
-            if (m_state==IDLE&&valid || m_state==LOOKUP&&cache_hit&&valid) begin
+            if (m_state==IDLE&&valid || m_state==LOOKUP&&cache_hit&&valid&&mat==2'b01) begin
                 reg_tag <= tag;
                 reg_op <= op;
                 reg_index <= index;
                 reg_bank <= offset[3:2];
                 reg_wstrb <= wstrb;
                 reg_wdata <= wdata;
+                reg_mat <= mat;
             end
         end
     end
@@ -94,8 +98,8 @@ module cache(
                     end
                 end
                 LOOKUP: begin
-                    if (cache_hit) begin
-                        // 请求完�?
+                    if (cache_hit&&reg_mat==2'b01) begin
+                        // 请求完成
                         if (valid) begin
                             m_state <= LOOKUP;
                         end
@@ -105,13 +109,13 @@ module cache(
                         rdata_buf <= load_res;
                     end
 
-                    else if (!cache_hit) begin
+                    else if (!cache_hit || reg_mat==2'b00) begin
                         m_state <= MISS;
                     end
                 end
                 MISS: begin
                     if (wr_rdy) begin
-                        // 对cache�?�起读行请求
+                        // 对cache发起读行请求
                         m_state <= REPLACE;
                         written <= 0;
                     end
@@ -120,16 +124,31 @@ module cache(
                     if (~written) begin
                         written <= 1;
                     end
-                    if (rd_rdy) begin
-                        m_state <= REFILL;
-                        refill_write_en <= 0;
+                    if (reg_mat==2'b01) begin
+                        if (rd_rdy) begin
+                            m_state <= REFILL;
+                            refill_write_en <= 0;
+                        end
+                    end
+                    else if (reg_mat==2'b00) begin
+                        if(reg_op==0&&rd_rdy) begin
+                            m_state <= REFILL;
+                            refill_write_en <= 0;
+                        end
+                        else if (reg_op==1) begin
+                            m_state <= REFILL;
+                            refill_write_en <= 0;
+                        end
                     end
                 end
                 REFILL: begin
-                    if (ret_valid==1&&n_ret_32==reg_bank) begin
+                    if (ret_valid==1&&n_ret_32==reg_bank&&reg_mat==2'b01) begin
                         rdata_buf <= ret_data;
                     end
                     if (ret_valid==1&&ret_last==1) begin
+                        refill_write_en <= 1;
+                    end
+                    else if (reg_mat==2'b00&&reg_op&&wr_rdy) begin
                         refill_write_en <= 1;
                     end
                     if (refill_write_en) begin
@@ -143,13 +162,24 @@ module cache(
     wire wr_rd_relate;
     assign wr_rd_relate = !op && reg_op && tag==reg_tag && index==reg_index;
     wire addr_overlap = w_state==WRITE && !op && tag==reg_tag && index==w_index && offset[3:2]==w_bank;
-    assign addr_ok = (m_state==IDLE&&valid || (m_state==LOOKUP&&cache_hit&&valid&&!wr_rd_relate))&&!addr_overlap;
-    assign data_ok = m_state==LOOKUP&&cache_hit || m_state==REFILL&&ret_valid&&n_ret_32==reg_bank;
-    assign rd_req = m_state==REPLACE;
-    assign rd_type = 3'b100;
+    assign addr_ok = (m_state==IDLE&&valid || (reg_mat==2'b01&&m_state==LOOKUP&&cache_hit&&valid&&!wr_rd_relate))&&!addr_overlap;
+    assign data_ok = (m_state==LOOKUP&&cache_hit || m_state==REFILL&&ret_valid&&n_ret_32==reg_bank)&&reg_mat==2'b01 || (reg_mat==2'b00&&m_state==REFILL&&ret_valid&&ret_last || reg_mat==2'b00&&m_state==REFILL&&reg_op&&wr_rdy);
+    assign rd_req = (reg_mat==2'b01) ? m_state==REPLACE : reg_op==0&&m_state==REPLACE;
+    assign rd_type = (reg_mat==2'b00) ? 3'b010 :
+           3'b100;
     assign rd_addr = {reg_tag,reg_index,4'b0};
-    assign rdata = m_state==LOOKUP&&cache_hit ? load_res : m_state==REFILL&&ret_valid&&n_ret_32==reg_bank ? ret_data : rdata_buf;
+    assign rdata =(reg_mat==2'b01) ? (m_state==LOOKUP&&cache_hit ? load_res :
+                                      m_state==REFILL&&ret_valid&&n_ret_32==reg_bank ? ret_data : rdata_buf) :
+           (ret_valid&&ret_last) ? ret_data : ret_data_buf;
 
+	reg [31:0] ret_data_buf;
+	always @(posedge clk) begin
+		if (~resetn ) begin
+			ret_data_buf <= 32'b0;
+		end else if (ret_valid&&ret_last&&reg_mat==2'b00) begin
+			ret_data_buf <= ret_data;
+		end
+	end
 
     wire [19:0] replace_tag;
     wire replace_d;
@@ -159,12 +189,15 @@ module cache(
     assign replace_d = replace_way ? way1_d_rdata : way0_d_rdata;
     assign replace_v = replace_way ? way1_v : way0_v;
     assign replace_line = replace_way ? way1_data : way0_data;
-    assign wr_req = (m_state==REPLACE&&!written)&&replace_d&&replace_v;
-    assign wr_type = 3'b100;
+    assign wr_req = (m_state==REPLACE&&!written)&&replace_d&&replace_v&&reg_mat==2'b01 || (m_state==REPLACE&&!written)&&(reg_mat==2'b00)&&reg_op;
+    assign wr_type = (reg_mat==2'b00) ? 3'b010 : 3'b100;
+    // TODO: 强序非缓存访问的读写地址是否还是这样生成呢？
 
-    assign wr_addr = {replace_tag,reg_index,4'b0};
-    assign wr_wstrb = replace_d ? 4'hf : 4'h0;
-    assign wr_data = replace_line;
+    wire [19:0] sel_tag;
+    assign sel_tag = (reg_mat==2'b01)?replace_tag:reg_tag;
+    assign wr_addr = {sel_tag,reg_index,4'b0};
+    assign wr_wstrb = (reg_mat==2'b01) ? (replace_d ? 4'hf : 4'h0) : (reg_op ? reg_wstrb : 4'h0);
+    assign wr_data = (reg_mat==2'b01) ? replace_line : {96'b0,reg_wdata};
 
 
     // output declaration of module lfsr_random_8bit
@@ -181,7 +214,7 @@ module cache(
     reg replace_way;
     reg [127:0] miss_buffer_wdata;
     wire [127:0] next_data = {miss_buffer_wdata[127:32],ret_data};
-    reg [1:0] n_ret_32; // AXI总线返回了几个32�?数�?�
+    reg [1:0] n_ret_32; // AXI总线返回了几个32位数据
     always @(posedge clk) begin
         if (~resetn) begin
             replace_way <= 0;
@@ -196,11 +229,13 @@ module cache(
                 n_ret_32 <= 0;
             end
             if (ret_valid) begin
-                n_ret_32 <= n_ret_32 + 1;
-                if(ret_last)
-                    miss_buffer_wdata <= next_data;
-                else
-                    miss_buffer_wdata <= next_data << 32;
+                if (reg_mat==2'b01) begin
+                    n_ret_32 <= n_ret_32 + 1'b1;
+                    if(ret_last)
+                        miss_buffer_wdata <= next_data;
+                    else
+                        miss_buffer_wdata <= next_data << 32;
+                end
             end
         end
     end
@@ -220,7 +255,7 @@ module cache(
             w_wdata <= 32'b0;
         end
         else begin
-            if (m_state==LOOKUP&&reg_op&&cache_hit) begin
+            if (reg_mat==2'b01&&m_state==LOOKUP&&reg_op&&cache_hit) begin
                 w_index <= reg_index;
                 w_wstrb <= reg_wstrb;
                 w_way <= way1_hit ? 1 : 0; // way1 hit ? way1 : 0
@@ -244,13 +279,13 @@ module cache(
         else begin
             case (w_state)
                 IDLE: begin
-                    if (m_state==LOOKUP&&reg_op&&cache_hit) begin
+                    if (reg_mat==2'b01&&m_state==LOOKUP&&reg_op&&cache_hit) begin
                         w_state <= WRITE;
                     end
                 end
                 WRITE: begin
-                    if(m_state==LOOKUP&&reg_op&&cache_hit) begin
-                        // 此时接�?�到新的HIT WRITE 则继续写
+                    if(reg_mat==2'b01&&m_state==LOOKUP&&reg_op&&cache_hit) begin
+                        // 此时接受到新的HIT WRITE 则继续写
                     end
                     else begin
                         w_state <= IDLE;
@@ -267,8 +302,8 @@ module cache(
     wire [1:0] tagv_we;
     wire [20:0] tagv_wdata;
     wire way0_v,way1_v;
-    assign tagv_index = m_state==IDLE?index:reg_index;
-    assign tagv_we = m_state==REFILL ? (replace_way ? 2'b10 : 2'b01) : 2'b00;
+    assign tagv_index = (m_state==IDLE)?index:reg_index;
+    assign tagv_we = (reg_mat==2'b01&&m_state==REFILL) ? (replace_way ? 2'b10 : 2'b01) : 2'b00;
     assign tagv_wdata = {reg_tag,1'b1};
     tagv_ram Way0_tagv_ram
              (
@@ -331,21 +366,22 @@ module cache(
                reg_wstrb[2]?reg_wdata[23:16]:miss_buffer_wdata[23:16],
                reg_wstrb[1]?reg_wdata[15:8]:miss_buffer_wdata[15:8],
                reg_wstrb[0]?reg_wdata[7:0]:miss_buffer_wdata[7:0]};
-    assign aligned_w_wdata = w_bank==2'b11 ? {w_wdata,96'b0} :
-           w_bank==2'b10 ? {32'b0,w_wdata,64'b0} :
-           w_bank==2'b01 ? {64'b0,w_wdata,32'b0} :
+    assign aligned_w_wdata = (w_bank==2'b11) ? {w_wdata,96'b0} :
+           (w_bank==2'b10) ? {32'b0,w_wdata,64'b0} :
+           (w_bank==2'b01) ? {64'b0,w_wdata,32'b0} :
            {96'b0,w_wdata};
-    assign ram_index =
-           w_state==WRITE ? w_index :
-           m_state==IDLE ? index :
+    assign ram_index = (w_state==WRITE) ? w_index :
+           (m_state==IDLE) ? index :
            reg_index;
     assign ram_wdata = (w_state==WRITE)?aligned_w_wdata:
            reg_op ? refill_reg_wdata : // 如果refill是store
            miss_buffer_wdata;
-    assign Way1_wstrb = (w_way&&w_state==WRITE) ? (w_wstrb<<(w_bank*4)) :
-           (m_state==REFILL&&refill_write_en&&replace_way) ? 16'hffff : 16'h0;
-    assign Way0_wstrb = (~w_way&&w_state==WRITE) ? (w_wstrb<<(w_bank*4)) :
-           (m_state==REFILL&&refill_write_en&&!replace_way) ? 16'hffff : 16'h0;
+    assign Way1_wstrb =
+           (w_way&&w_state==WRITE) ? (w_wstrb<<(w_bank*4)) :
+           (reg_mat==2'b01&&m_state==REFILL&&refill_write_en&&replace_way) ? 16'hffff : 16'h0;
+    assign Way0_wstrb =
+           (~w_way&&w_state==WRITE) ? (w_wstrb<<(w_bank*4)) :
+           (reg_mat==2'b01&&m_state==REFILL&&refill_write_en&&!replace_way) ? 16'hffff : 16'h0;
     // DATA Bank RAM 8* 256x32
     data_bank_ram Way0_Bank0_ram
                   (
@@ -435,10 +471,10 @@ module cache(
     wire way0_we;
     wire way1_we;
     wire [7:0] d_index;
-    assign d_index = m_state==IDLE?index:
-           w_state==WRITE?w_index:reg_index;
-    assign way1_we = (w_state==WRITE&&w_way || (m_state==REFILL&&replace_way)) ? 1 : 0;
-    assign way0_we = (w_state==WRITE&&!w_way || m_state==REFILL&&!replace_way) ? 1 : 0;
+    assign d_index = (m_state==IDLE)?index:
+           (w_state==WRITE)?w_index:reg_index;
+    assign way1_we = (w_state==WRITE&&w_way || (reg_mat==2'b01&&m_state==REFILL&&replace_way)) ? 1 : 0;
+    assign way0_we = (w_state==WRITE&&!w_way || reg_mat==2'b01&&m_state==REFILL&&!replace_way) ? 1 : 0;
 
     always @(posedge clk) begin
         if (~resetn) begin
