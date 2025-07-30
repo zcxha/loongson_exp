@@ -42,6 +42,7 @@ module csr_reg(
 
 		output wire out_crmd_da,
 		output wire out_crmd_pg,
+		output wire [1:0] out_crmd_datm,
 		output wire [1:0] out_crmd_plv,
 		output wire [31:0] out_dmw0,
 		output wire [31:0] out_dmw1,

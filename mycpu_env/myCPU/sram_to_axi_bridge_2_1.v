@@ -112,7 +112,7 @@ module sram_to_axi_bridge_2_1 (
                     if (dcache_rd_req) begin
                         req_type <= 1;
                         arvalid <= 1;
-                        arlen <= 7'b011;
+                        arlen <= dcache_rd_type==3'b010 ? 7'b001 :7'b011;
                         arsize <= 3'b010;
 
                         rready <= 0;
@@ -124,7 +124,7 @@ module sram_to_axi_bridge_2_1 (
                     else if (icache_rd_req) begin
                         req_type <= 0;
                         arvalid <= 1;
-                        arlen <= 7'b011;
+                        arlen <= icache_rd_type==3'b010 ? 7'b001 :7'b011;
                         arsize <= 3'b010;
 
                         rready <= 0;
@@ -221,32 +221,40 @@ module sram_to_axi_bridge_2_1 (
                     wvalid <= 1;
                     wdata <= aw_w_wdata_buffer[31:0];
                     aw_w_cnt <= 2'b0;
-                    wlast <= 0;
+                    wlast <= dcache_wr_type==3'b010 ? 1 : 0;
 
                     aw_w_state <= AW_W_WCYCLE;
                 end
             end
             AW_W_WCYCLE: begin
                 if (wvalid&&wready) begin
-                    aw_w_cnt <= aw_w_cnt + 1;
+                    if (dcache_wr_type==3'b100) begin // 一致可缓存访问
+                        aw_w_cnt <= aw_w_cnt + 1;
 
-                    if (aw_w_cnt == 2'b00) begin
-                        wdata <= aw_w_wdata_buffer[63:32];
+                        if (aw_w_cnt == 2'b00) begin
+                            wdata <= aw_w_wdata_buffer[63:32];
+                        end
+                        else if (aw_w_cnt == 2'b01) begin
+                            wdata <= aw_w_wdata_buffer[95:64];
+                        end
+                        else if (aw_w_cnt == 2'b10) begin
+                            wdata <= aw_w_wdata_buffer[127:96];
+                            wlast <= 1;
+                        end
+                        else if (aw_w_cnt == 2'b11) begin
+                            aw_w_state <= B_WAIT;
+                            wvalid <= 0;
+                            wlast <= 0;
+                        end
+                        else begin
+                            wdata <= 32'hdeadbeef;
+                        end
                     end
-                    else if (aw_w_cnt == 2'b01) begin
-                        wdata <= aw_w_wdata_buffer[95:64];
-                    end
-                    else if (aw_w_cnt == 2'b10) begin
-                        wdata <= aw_w_wdata_buffer[127:96];
-                        wlast <= 1;
-                    end
-                    else if (aw_w_cnt == 2'b11) begin
+                    else if (dcache_wr_type==3'b010) begin // 强序非缓存访问
+						wvalid <= 0;
+						wlast <= 0;
+						
                         aw_w_state <= B_WAIT;
-                        wvalid <= 0;
-                        wlast <= 0;
-                    end
-                    else begin
-                        wdata <= 32'hdeadbeef;
                     end
                 end
             end

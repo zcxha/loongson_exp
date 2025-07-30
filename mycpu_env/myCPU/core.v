@@ -26,6 +26,7 @@ module core #
         output wire [3:0]  data_sram_offset, // offset = vaddr[3:0]
         output wire [3:0]  data_sram_wstrb,
         output wire [31:0] data_sram_wdata,
+        output wire [1:0]  data_sram_mat,
         input  wire        data_sram_addr_ok,
         input  wire        data_sram_data_ok,
         input  wire [31:0] data_sram_rdata,
@@ -829,6 +830,11 @@ module core #
            (data_hit_dmw0 || data_hit_dmw1) ? data_sram_dmwaddr :
            data_sram_tlbaddr;
 
+    assign data_sram_mat = out_crmd_da ? out_crmd_datm :
+           data_hit_dwm0 ? out_dmw0[`CSR_DMW0_MAT] :
+           data_hit_dmw1 ? out_dmw1[`CSR_DMW1_MAT] :
+           s1_mat;
+
     // assign data_sram_req = ex_mem_op && mem_allowin;
     assign data_sram_wr = (ex_op_st_b | ex_op_st_h | ex_op_st_w) && (!wb_pref_refetch && !mem_pref_refetch && !ex_pref_refetch && !wb_has_exception && !mem_has_exception && !ex_has_exception) && ex_valid; // 如果其或者其后的流水段发生异常，则停止写ram
     assign data_sram_size = (ex_mem_byte) ? 2'b00 :
@@ -836,8 +842,9 @@ module core #
            2'b10;
     assign data_sram_wstrb    = mem_we & {4{valid}};
     assign data_sram_index = data_sram_vaddr[11:4];
-	assign data_sram_tag = data_sram_paddr[31:12];
-	assign data_sram_offset = data_sram_vaddr[3:0];
+    assign data_sram_tag = data_sram_paddr[31:12];
+    assign data_sram_offset = data_sram_vaddr[3:0];
+    assign data_sram_mat == 2'b00;
     assign data_sram_wdata = ex_op_st_b ? {4{ex_rkd_value[7:0]}} :
            ex_op_st_h ? {2{ex_rkd_value[15:0]}} :
            ex_rkd_value;
@@ -863,6 +870,7 @@ module core #
 
     wire out_crmd_da;
     wire out_crmd_pg;
+	wire [1:0] out_crmd_datm;
     wire [1:0] out_crmd_plv;
     wire [31:0] out_dmw0;
     wire [31:0] out_dmw1;
@@ -1121,6 +1129,7 @@ module core #
                 .in_tlbidx_ps(in_tlbidx_ps),
                 .out_crmd_da(out_crmd_da),
                 .out_crmd_pg(out_crmd_pg),
+				.out_crmd_datm(out_crmd_datm),
                 .out_crmd_plv(out_crmd_plv),
                 .out_dmw0(out_dmw0),
                 .out_dmw1(out_dmw1),

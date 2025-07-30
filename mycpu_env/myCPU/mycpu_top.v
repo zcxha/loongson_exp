@@ -74,6 +74,7 @@ module mycpu_top (
 	wire [3:0] core_data_sram_offset;
     wire [3:0] core_data_sram_wstrb;
     wire [31:0] core_data_sram_wdata;
+	wire [1:0] core_data_sram_mat;
     wire core_data_sram_addr_ok;
     wire core_data_sram_data_ok;
     wire [31:0] core_data_sram_rdata;
@@ -83,7 +84,7 @@ module mycpu_top (
              .clk		(aclk),
              .resetn 	(aresetn),
 
-             // SRAM master -> slave
+             // pipeline -> icache
 
              .inst_sram_req	(core_inst_sram_req),
              .inst_sram_wr	(core_inst_sram_wr),
@@ -93,12 +94,12 @@ module mycpu_top (
              .inst_sram_wstrb (core_inst_sram_wstrb),
              .inst_sram_wdata (core_inst_sram_wdata),
 
-             // SRAM slave -> master
+             // 
              .inst_sram_addr_ok (core_inst_sram_addr_ok),
              .inst_sram_data_ok (core_inst_sram_data_ok),
              .inst_sram_rdata (core_inst_sram_rdata),
 
-             // SRAM master -> slave
+             // pipeline -> dcache
 
              .data_sram_req	(core_data_sram_req),
              .data_sram_wr	(core_data_sram_wr),
@@ -107,8 +108,8 @@ module mycpu_top (
 			 .data_sram_offset (core_data_sram_offset),
              .data_sram_wstrb (core_data_sram_wstrb),
              .data_sram_wdata (core_data_sram_wdata),
-
-             // SRAM slave -> master
+			 .data_sram_mat (core_data_sram_mat),
+             // 
              .data_sram_addr_ok (core_data_sram_addr_ok),
              .data_sram_data_ok (core_data_sram_data_ok),
              .data_sram_rdata (core_data_sram_rdata),
@@ -188,6 +189,7 @@ module mycpu_top (
 		.offset    	(core_data_sram_offset     ),
 		.wstrb     	(core_data_sram_wstrb      ),
 		.wdata     	(core_data_sram_wdata      ),
+		.mat		(core_data_sram_mat		),
 		.addr_ok   	(core_data_sram_addr_ok    ),
 		.data_ok   	(core_data_sram_data_ok    ),
 		.rdata     	(core_data_sram_rdata      ),
