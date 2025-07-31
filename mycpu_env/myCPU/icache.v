@@ -217,7 +217,7 @@ module cache(
     wire wr_rd_relate;
     assign wr_rd_relate = !op && reg_op && tag==reg_tag && index==reg_index;
     wire addr_overlap = w_state==WRITE && !op && tag==reg_tag && index==w_index && offset[3:2]==w_bank;
-    assign addr_ok = (m_state==IDLE&&valid || (!cacop_op&&reg_mat==2'b01&&m_state==LOOKUP&&cache_hit&&valid&&!wr_rd_relate))&&!addr_overlap;
+    assign addr_ok =  (m_state==IDLE&&valid || (!cacop_op&&reg_mat==2'b01&&m_state==LOOKUP&&cache_hit&&valid&&!wr_rd_relate))&&!addr_overlap;
     assign data_ok = (reg_cacop_op&&reg_cacop_code[0]) ? m_state==LOOKUP :
            (reg_cacop_op&&(reg_cacop_code[1]||reg_cacop_code[2])) ? (m_state==REFILL&&refill_write_en) :
            (m_state==LOOKUP&&cache_hit

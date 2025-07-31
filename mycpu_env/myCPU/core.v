@@ -305,16 +305,19 @@ module core #
 
                 pc <= cached_npc;
             end
-            else if (!pref_has_exception && !(ex_valid&&ex_op_cacop&&cacop_inst&&ex_has_addr_exception) && !(op_cacop&&id_valid)) begin
+            else if (!pref_has_exception || (inst_sram_cacop_op)) begin
                 inst_sram_req <= 1;
-
+				
                 pc <= nextpc;
             end
         end
-        else if (inst_sram_addr_ok && inst_sram_req) begin
+        else if (inst_sram_addr_ok && inst_sram_req && !(ex_op_cacop&&cacop_inst)) begin
             inst_sram_req <= 0;
             waiting_for_inst <= 1;
-        end
+		end else if (inst_sram_addr_ok && inst_sram_req && mem_op_cacop && mem_cacop_inst) begin
+			inst_sram_req <= 0;
+			waiting_for_inst <= 0;
+		end
         else if (inst_sram_data_ok && waiting_for_inst) begin
             waiting_for_inst <= 0;
             cached_inst <= inst_sram_rdata;
@@ -1284,7 +1287,7 @@ module core #
     wire if_pref_refetch;
 
     assign if_pc = if_reg[31:0];
-    assign if_data_in = cached_inst;
+    assign if_data_in = inst_sram_rdata;
     assign if_pref_refetch = if_reg[32];
 
     // id stage
