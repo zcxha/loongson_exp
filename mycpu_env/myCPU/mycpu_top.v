@@ -63,6 +63,9 @@ module mycpu_top (
     wire [3:0] core_inst_sram_offset;
     wire [3:0] core_inst_sram_wstrb;
     wire [31:0] core_inst_sram_wdata;
+	wire [1:0] core_inst_sram_mat;
+	wire core_inst_sram_cacop_op;
+	wire [2:0] core_inst_sram_cacop_code;
     wire core_inst_sram_addr_ok;
     wire core_inst_sram_data_ok;
     wire [31:0] core_inst_sram_rdata;
@@ -75,6 +78,8 @@ module mycpu_top (
     wire [3:0] core_data_sram_wstrb;
     wire [31:0] core_data_sram_wdata;
 	wire [1:0] core_data_sram_mat;
+	wire core_data_sram_cacop_op;
+	wire [2:0] core_data_sram_cacop_code;
     wire core_data_sram_addr_ok;
     wire core_data_sram_data_ok;
     wire [31:0] core_data_sram_rdata;
@@ -93,6 +98,9 @@ module mycpu_top (
              .inst_sram_offset (core_inst_sram_offset),
              .inst_sram_wstrb (core_inst_sram_wstrb),
              .inst_sram_wdata (core_inst_sram_wdata),
+			 .inst_sram_mat (core_inst_sram_mat),
+			 .inst_sram_cacop_op (core_inst_sram_cacop_op),
+			 .inst_sram_cacop_code (core_inst_sram_cacop_code),
 
              // 
              .inst_sram_addr_ok (core_inst_sram_addr_ok),
@@ -109,6 +117,8 @@ module mycpu_top (
              .data_sram_wstrb (core_data_sram_wstrb),
              .data_sram_wdata (core_data_sram_wdata),
 			 .data_sram_mat (core_data_sram_mat),
+			 .data_sram_cacop_op (core_data_sram_cacop_op),
+			 .data_sram_cacop_code (core_data_sram_cacop_code),
              // 
              .data_sram_addr_ok (core_data_sram_addr_ok),
              .data_sram_data_ok (core_data_sram_data_ok),
@@ -135,7 +145,7 @@ module mycpu_top (
 	wire ret_last;
 	wire [31:0] ret_data;
 	
-	icache i_cache(
+	cache i_cache(
 		.clk       	(aclk        ),
 		.resetn    	(aresetn     ),
 		.valid     	(core_inst_sram_req      ),
@@ -145,6 +155,10 @@ module mycpu_top (
 		.offset    	(core_inst_sram_offset     ),
 		.wstrb     	(core_inst_sram_wstrb      ),
 		.wdata     	(core_inst_sram_wdata      ),
+		.mat		(core_inst_sram_mat		   ),
+		.cacop_op   (core_inst_sram_cacop_op   ),
+		.cacop_code (core_inst_sram_cacop_code ), 
+
 		.addr_ok   	(core_inst_sram_addr_ok    ),
 		.data_ok   	(core_inst_sram_data_ok    ),
 		.rdata     	(core_inst_sram_rdata      ),
@@ -179,7 +193,7 @@ module mycpu_top (
 	wire [127:0] dcwr_data;
 
 	wire dcwr_rdy;
-	dcache d_cache(
+	cache d_cache(
 		.clk       	(aclk        ),
 		.resetn    	(aresetn     ),
 		.valid     	(core_data_sram_req      ),
@@ -189,7 +203,9 @@ module mycpu_top (
 		.offset    	(core_data_sram_offset     ),
 		.wstrb     	(core_data_sram_wstrb      ),
 		.wdata     	(core_data_sram_wdata      ),
-		.mat		(core_data_sram_mat		),
+		.mat		(core_data_sram_mat		   ),
+		.cacop_op   (core_data_sram_cacop_op   ),
+		.cacop_code (core_data_sram_cacop_code ),
 		.addr_ok   	(core_data_sram_addr_ok    ),
 		.data_ok   	(core_data_sram_data_ok    ),
 		.rdata     	(core_data_sram_rdata      ),

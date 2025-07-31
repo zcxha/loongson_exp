@@ -14,6 +14,10 @@ module core #
         output wire [3:0]  inst_sram_offset, // offset = vaddr[3:0]
         output wire [3:0]  inst_sram_wstrb, // 该次字节写使能
         output wire [31:0] inst_sram_wdata, //
+		output wire [1:0]  inst_sram_mat,
+        output wire 	   inst_sram_cacop_op,
+        output wire [2:0]  inst_sram_cacop_code,
+        output wire [31:0] inst_sram_vaddr,
         input  wire		   inst_sram_addr_ok, // 该次请求地址传输OK 读：地址被接收 写：地址和数据被接收
         input  wire		   inst_sram_data_ok, // 该次请求的数据传输OK 读：数据返回 写：数据写入完成
         input  wire [31:0] inst_sram_rdata,
@@ -27,6 +31,9 @@ module core #
         output wire [3:0]  data_sram_wstrb,
         output wire [31:0] data_sram_wdata,
         output wire [1:0]  data_sram_mat,
+        output wire        data_sram_cacop_op,
+        output wire [2:0]  data_sram_cacop_code,
+        output wire [31:0] data_sram_vaddr,
         input  wire        data_sram_addr_ok,
         input  wire        data_sram_data_ok,
         input  wire [31:0] data_sram_rdata,
@@ -189,6 +196,8 @@ module core #
     wire		inst_tlbfill;
     wire		inst_invtlb;
 
+    wire		inst_cacop;
+
     wire        need_ui5;
     wire        need_si12;
     wire        need_si16;
@@ -223,6 +232,9 @@ module core #
     wire id_has_int; // 中断标记到ID段
     wire id_ertn_flush;
 
+    wire op_cacop;
+    wire [4:0] code_cacop;
+
     /***EX***/
 
     wire [31:0] alu_result ;
@@ -254,7 +266,6 @@ module core #
             cancel_inst <= 0;
             exception_cancel_flag <= 0;
             cached_npc <= 32'b0;
-            cached_inst <= 32'b0;
         end
         if (wb_has_exception || wb_id_ertn_flush || wb_pref_refetch) begin
             exception_cancel_flag <= 1;
@@ -281,6 +292,7 @@ module core #
             waiting_for_inst <= 0;
             inst_sram_req <= 0;
             pc <= 32'h1bfffffc;     //trick: to make nextpc be 0x1c000000 during reset
+            cached_inst <= 32'b0;
         end
         if ((if_allowin && inst_sram_req == 0) && !waiting_for_inst) begin // TODO: 如果有地址错误则不发出请求
             inst_sram_req <= 1;
@@ -305,11 +317,11 @@ module core #
     end
 
     wire pref_refetch = //out_crmd_pg &&
-         // 流水线中有写 DA PG DMW0 DMW1 ASID 即CSRWR 这些 以及TLBRD  TODO:在PG翻译模式下才判断
-         (id_valid&&(csr_we&&(csr==`CSR_CRMD || csr==`CSR_CRMD || csr==`CSR_DMW0 || csr==`CSR_DMW1 || csr==`CSR_ASID) || tlbrd_op || tlbwr_op || tlbfill_op || invtlb_valid )
-          || ex_valid&&(ex_csr_we&&(ex_csr==`CSR_CRMD || ex_csr==`CSR_CRMD || ex_csr==`CSR_DMW0 || ex_csr==`CSR_DMW1 || ex_csr==`CSR_ASID) || ex_tlbrd_op || ex_tlbwr_op || ex_tlbfill_op || ex_invtlb_valid)
-          || mem_valid&&(mem_csr_we&&(mem_csr==`CSR_CRMD || mem_csr==`CSR_CRMD || mem_csr==`CSR_DMW0 || mem_csr==`CSR_DMW1 || mem_csr==`CSR_ASID) || mem_tlbrd_op || mem_tlbwr_op || mem_tlbfill_op || mem_invtlb_valid) // invtlb在ex段执行完，那么在ex之后就应该触发重取指 此处为了简化设计都是在WB段触发重取指
-          || wb_valid&&(wb_csr_we&&(wb_csr_num==`CSR_CRMD || wb_csr_num==`CSR_CRMD || wb_csr_num==`CSR_DMW0 || wb_csr_num==`CSR_DMW1 || wb_csr_num==`CSR_ASID) || wb_tlbrd_op || wb_tlbwr_op || wb_tlbfill_op || wb_invtlb_valid));
+         // 流水线中有写 DA PG DMW0 DMW1 ASID 即CSRWR 这些 以及TLBRD 以及CACOP TODO:在PG翻译模式下才判断
+         (id_valid&&(csr_we&&(csr==`CSR_CRMD || csr==`CSR_CRMD || csr==`CSR_DMW0 || csr==`CSR_DMW1 || csr==`CSR_ASID) || tlbrd_op || tlbwr_op || tlbfill_op || invtlb_valid || op_cacop)
+          || ex_valid&&(ex_csr_we&&(ex_csr==`CSR_CRMD || ex_csr==`CSR_CRMD || ex_csr==`CSR_DMW0 || ex_csr==`CSR_DMW1 || ex_csr==`CSR_ASID) || ex_tlbrd_op || ex_tlbwr_op || ex_tlbfill_op || ex_invtlb_valid || ex_op_cacop)
+          || mem_valid&&(mem_csr_we&&(mem_csr==`CSR_CRMD || mem_csr==`CSR_CRMD || mem_csr==`CSR_DMW0 || mem_csr==`CSR_DMW1 || mem_csr==`CSR_ASID) || mem_tlbrd_op || mem_tlbwr_op || mem_tlbfill_op || mem_invtlb_valid || mem_op_cacop) // invtlb在ex段执行完，那么在ex之后就应该触发重取指 此处为了简化设计都是在WB段触发重取指
+          || wb_valid&&(wb_csr_we&&(wb_csr_num==`CSR_CRMD || wb_csr_num==`CSR_CRMD || wb_csr_num==`CSR_DMW0 || wb_csr_num==`CSR_DMW1 || wb_csr_num==`CSR_ASID) || wb_tlbrd_op || wb_tlbwr_op || wb_tlbfill_op || wb_invtlb_valid || wb_op_cacop));
 
     wire [31:0] inst_sram_vaddr = pref_adef ? 32'h1c000000 : pc;
 
@@ -338,9 +350,12 @@ module core #
     assign s0_asid = out_asid_asid;
     wire [31:0] inst_sram_tlbaddr = {s0_ppn,inst_sram_vaddr[11:0]};
     // 异常
-    wire pref_tlbr = out_crmd_pg ? ~s0_found && inst_use_tlb: 0;
-    wire pref_pif = out_crmd_pg ? ~s0_v && !pref_tlbr && inst_use_tlb: 0;
-    wire pref_ppi = out_crmd_pg ? (out_crmd_plv > s0_plv) && !pref_tlbr && !pref_pif && inst_use_tlb: 0;
+    wire pref_tlbr = cacop_inst&&cacop_op&&(cacop_code[0]||cacop_code[1]) ? 0 :
+         (out_crmd_pg ? ~s0_found && inst_use_tlb: 0);
+    wire pref_pif = cacop_inst&&cacop_op&&(cacop_code[0]||cacop_code[1]) ? 0 :
+         (out_crmd_pg ? ~s0_v && !pref_tlbr && inst_use_tlb: 0);
+    wire pref_ppi = cacop_inst&&cacop_op&&(cacop_code[0]||cacop_code[1]) ? 0 :
+         (out_crmd_pg ? (out_crmd_plv > s0_plv) && !pref_tlbr && !pref_pif && inst_use_tlb: 0);
     wire pref_has_exception = pref_adef | pref_tlbr | pref_pif | pref_ppi;
 
     // MUX
@@ -351,6 +366,7 @@ module core #
 
 
     assign inst_sram_wr = 0;
+	assign inst_sram_mat = 2'b01;
     // assign inst_sram_size = 2'h2;
     assign inst_sram_wstrb    = 4'b0;
     // assign inst_sram_addr  = inst_sram_paddr; // 发生取指地址错时将PC置默认值
@@ -479,6 +495,11 @@ module core #
     assign inst_tlbfill = op_31_26_d[6'h01] & op_25_22_d[4'h9] & op_21_20_d[2'h0] & op_19_15_d[5'h10] & op_14_10_d[5'h0d] & op_09_05_d[5'h00] & op_04_00_d[5'h00];
     assign inst_invtlb = op_31_26_d[6'h01] & op_25_22_d[4'h9] & op_21_20_d[2'h0] & op_19_15_d[5'h13];
 
+    assign inst_cacop = op_31_26_d[6'h01] & op_25_22_d[4'h8];
+
+    assign op_cacop = inst_cacop;
+    assign code_cacop = rd;
+
     wire invtlb_op_inv;
     assign invtlb_op_inv = (rd[4:3] != 2'b00 || rd == 5'b00111) && inst_invtlb; // op > 6
     assign {tlbsrch_op,tlbrd_op,tlbwr_op,tlbfill_op,invtlb_valid} = {inst_tlbsrch,inst_tlbrd,inst_tlbwr,inst_tlbfill,inst_invtlb & ~invtlb_op_inv};
@@ -498,7 +519,7 @@ module core #
                       | inst_mulh_wu | inst_div_w | inst_mod_w | inst_div_wu | inst_mod_wu
                       | inst_break | inst_syscall | inst_ertn | inst_csrrd | inst_csrwr
                       | inst_csrxchg | inst_rdcntvl_w | inst_rdcntvh_w | inst_rdcntid | inst_tlbsrch
-                      | inst_tlbrd | inst_tlbwr | inst_tlbfill | inst_invtlb) | invtlb_op_inv; // 指令不存在异常 或者指令保留异常
+                      | inst_tlbrd | inst_tlbwr | inst_tlbfill | inst_invtlb | inst_cacop) | invtlb_op_inv; // 指令不存在异常 或者指令保留异常
 
     assign id_syscall = inst_syscall;
     assign id_break = inst_break; // 系统调用和断点异常
@@ -521,7 +542,7 @@ module core #
 
 
     assign alu_op[ 0] = inst_add_w | inst_addi_w | inst_ld_w | inst_st_w | inst_ld_b | inst_ld_bu | inst_ld_h | inst_ld_hu | inst_st_b | inst_st_h
-           | inst_jirl | inst_bl | inst_pcaddu12i;
+           | inst_jirl | inst_bl | inst_pcaddu12i | inst_cacop;
     assign alu_op[ 1] = inst_sub_w;
     assign alu_op[ 2] = inst_slt | inst_slti;
     assign alu_op[ 3] = inst_sltu | inst_sltui;
@@ -542,7 +563,7 @@ module core #
 
     assign need_ui5   =  inst_slli_w | inst_srli_w | inst_srai_w;
     assign need_ui12  =  inst_andi | inst_ori | inst_xori;
-    assign need_si12  =  inst_addi_w | inst_ld_b | inst_ld_h | inst_ld_w | inst_ld_bu | inst_ld_hu | inst_st_b | inst_st_h | inst_st_w | inst_slti | inst_sltui;
+    assign need_si12  =  inst_addi_w | inst_ld_b | inst_ld_h | inst_ld_w | inst_ld_bu | inst_ld_hu | inst_st_b | inst_st_h | inst_st_w | inst_slti | inst_sltui | inst_cacop;
     assign need_si16  =  inst_jirl | inst_beq | inst_bne | inst_blt | inst_bge | inst_bltu | inst_bgeu;
     assign need_si20  =  inst_lu12i_w | inst_pcaddu12i;
     assign need_si26  =  inst_b | inst_bl;
@@ -583,7 +604,8 @@ module core #
            inst_andi   |
            inst_ori    |
            inst_xori   |
-           inst_pcaddu12i;
+           inst_pcaddu12i |
+           inst_cacop;
 
     //（其实 ex_forward表示前递alu结果，mem_forward表示前递内存读结果）
     assign ex_forward = inst_add_w | inst_sub_w | inst_slt |
@@ -600,7 +622,7 @@ module core #
     assign res_from_mem  = inst_ld_w | inst_ld_b | inst_ld_bu | inst_ld_h | inst_ld_hu;
     assign dst_is_r1     = inst_bl;
     assign dst_is_rj	 = inst_rdcntid;
-    assign gr_we         = ~inst_st_b & ~inst_st_h & ~inst_st_w & ~inst_beq & ~inst_bne & ~inst_blt & ~inst_bge & ~inst_bltu & ~inst_bgeu & ~inst_b & ~inst_tlbsrch & ~inst_tlbfill & ~inst_tlbrd & ~inst_tlbwr & ~inst_invtlb;
+    assign gr_we         = ~inst_st_b & ~inst_st_h & ~inst_st_w & ~inst_beq & ~inst_bne & ~inst_blt & ~inst_bge & ~inst_bltu & ~inst_bgeu & ~inst_b & ~inst_tlbsrch & ~inst_tlbfill & ~inst_tlbrd & ~inst_tlbwr & ~inst_invtlb & ~inst_cacop;
     assign dest          = dst_is_r1 ? 5'd1 : dst_is_rj ? rj : rd;
 
     assign mem_op = inst_ld_w | inst_ld_h | inst_ld_b | inst_ld_bu | inst_ld_hu | inst_st_b | inst_st_w | inst_st_h;
@@ -792,6 +814,31 @@ module core #
     wire w_d1;
     wire w_v1;
 
+    // CACOP
+    wire [31:0] cacop_va;
+    wire [2:0] cacop_code;
+    wire cacop_op;
+    wire cacop_data;
+    wire cacop_inst;
+
+
+    assign cacop_op = ex_op_cacop;
+    assign cacop_code[0] = ex_op_cacop[4:3]==2'b00;
+    assign cacop_code[1] = ex_op_cacop[4:3]==2'b01;
+    assign cacop_code[2] = ex_op_cacop[4:3]==2'b10;
+
+    assign cacop_inst = ex_op_cacop[2:0]==3'b000;
+    assign cacop_data = ex_op_cacop[2:0]==3'b001;
+
+    assign data_sram_cacop_op = cacop_data & cacop_op;
+    assign data_sram_cacop_code = cacop_code;
+    assign data_sram_vaddr = cacop_va;
+
+    assign inst_sram_cacop_op = cacop_inst & cacop_op;
+    assign inst_sram_cacop_code = cacop_code;
+    assign inst_sram_vaddr = cacop_va;
+
+
 
     /*------MMU Unit------*/
     wire [31:0] data_sram_vaddr = EX_result & 32'hFFFF_FFFC;
@@ -817,11 +864,16 @@ module core #
 
     // 异常  tlbr > pi* > ppi > pme
     wire data_use_tlb = out_crmd_pg && !data_hit_dmw0 && !data_hit_dmw1;
-    wire ex_tlbr = out_crmd_pg ? !s1_found && ex_mem_op && data_use_tlb : 0;
-    wire ex_pil = out_crmd_pg ? !s1_v && ex_op_load && !ex_tlbr && data_use_tlb: 0;
-    wire ex_pis = out_crmd_pg ? !s1_v && ex_op_store && !ex_tlbr && data_use_tlb: 0;
-    wire ex_ppi = out_crmd_pg ? (out_crmd_plv > s1_plv) && ex_mem_op && !ex_tlbr && !ex_pil && !ex_pis && data_use_tlb: 0;
-    wire ex_pme = out_crmd_pg ? ex_op_store && !s1_d && !ex_tlbr && !ex_pil && !ex_pis && !ex_ppi && data_use_tlb: 0;
+    wire ex_tlbr = cacop_data&&cacop_op&&(cacop_code[0]||cacop_code[1]) ? 0 :
+         (out_crmd_pg ? !s1_found && ex_mem_op && data_use_tlb : 0);
+    wire ex_pil = cacop_data&&cacop_op&&(cacop_code[0]||cacop_code[1]) ? 0 :
+         (out_crmd_pg ? !s1_v && ex_op_load && !ex_tlbr && data_use_tlb: 0);
+    wire ex_pis = cacop_data&&cacop_op&&(cacop_code[0]||cacop_code[1]) ? 0 :
+         (out_crmd_pg ? !s1_v && ex_op_store && !ex_tlbr && data_use_tlb: 0);
+    wire ex_ppi = cacop_data&&cacop_op&&(cacop_code[0]||cacop_code[1]) ? 0 :
+         (out_crmd_pg ? (out_crmd_plv > s1_plv) && ex_mem_op && !ex_tlbr && !ex_pil && !ex_pis && data_use_tlb: 0);
+    wire ex_pme = cacop_data&&cacop_op&&(cacop_code[0]||cacop_code[1]) ? 0 :
+         (out_crmd_pg ? ex_op_store && !s1_d && !ex_tlbr && !ex_pil && !ex_pis && !ex_ppi && data_use_tlb: 0);
     wire ex_has_addr_exception = ex_tlbr | ex_pil | ex_pis | ex_ppi | ex_pme;
 
     // MUX
@@ -854,7 +906,7 @@ module core #
             data_sram_req <= 0;
             waiting_for_data <= 0;
         end
-        if (ex_valid && ex_mem_op && mem_allowin && !waiting_for_data) begin // TODO:不发出产生地址异常的请求
+        if (ex_valid && (ex_mem_op||(ex_op_cacop&&cacop_data)) && mem_allowin && !waiting_for_data) begin // TODO:不发出产生地址异常的请求
             data_sram_req <= 1;
         end
         if (data_sram_addr_ok && data_sram_req) begin
@@ -869,7 +921,7 @@ module core #
 
     wire out_crmd_da;
     wire out_crmd_pg;
-	wire [1:0] out_crmd_datm;
+    wire [1:0] out_crmd_datm;
     wire [1:0] out_crmd_plv;
     wire [31:0] out_dmw0;
     wire [31:0] out_dmw1;
@@ -1128,7 +1180,7 @@ module core #
                 .in_tlbidx_ps(in_tlbidx_ps),
                 .out_crmd_da(out_crmd_da),
                 .out_crmd_pg(out_crmd_pg),
-				.out_crmd_datm(out_crmd_datm),
+                .out_crmd_datm(out_crmd_datm),
                 .out_crmd_plv(out_crmd_plv),
                 .out_dmw0(out_dmw0),
                 .out_dmw1(out_dmw1),
@@ -1339,6 +1391,8 @@ module core #
 
     // ex stage
     assign ex_ready_go = ex_div_enable ? div_complete :
+           ex_op_cacop && cacop_inst ? inst_sram_addr_ok && inst_sram_req:
+           ex_op_cacop && cacop_data ? data_sram_addr_ok && data_sram_req:
            ex_mem_op ? data_sram_req && data_sram_addr_ok :
            ex_tlbsrch_op ? ~ex_srch_mem_wr :
            1; // todo
@@ -1420,6 +1474,9 @@ module core #
             ex_reg[332] <= id_pref_pif;
             ex_reg[333] <= id_pref_ppi;
             ex_reg[334] <= id_pref_refetch;
+
+            ex_reg[335] <= op_cacop;
+            ex_reg[340:336] <= code_cacop;
         end
     end
 
@@ -1489,6 +1546,9 @@ module core #
     wire ex_op_store;
     wire ex_op_load;
 
+    wire ex_op_cacop;
+    wire ex_code_cacop;
+
     assign ex_mul_signed = ex_reg[215];
     assign ex_mul_hres = ex_reg[216];
     assign ex_mul_enable = ex_reg[217];
@@ -1554,12 +1614,15 @@ module core #
     assign ex_pref_ppi = ex_reg[333];
     assign ex_pref_refetch = ex_reg[334];
 
+    assign ex_op_cacop = ex_reg[335];
+    assign ex_code_cacop = ex_reg[340:336];
+
     // mem stage
     wire mem_allowin;
     wire mem_ready_go;
     wire mem_to_wb_valid;
 
-    assign mem_ready_go = !waiting_for_data;
+    assign mem_ready_go = !waiting_for_data && (!waiting_for_inst&&mem_op_cacop&&mem_cacop_inst);
     assign mem_allowin = !mem_valid || mem_ready_go && wb_allowin;
     assign mem_to_wb_valid = mem_valid && mem_ready_go;
     always @(posedge clk) begin
@@ -1626,8 +1689,14 @@ module core #
             mem_reg[249] <= ex_pme;
             mem_reg[250] <= ex_pref_refetch;
             mem_reg[251] <= ex_invtlb_valid;
+
+            mem_reg[252] <= ex_op_cacop;
+            mem_reg[253] <= cacop_inst;
         end
     end
+
+    wire mem_op_cacop;
+    wire mem_cacop_inst;
 
     wire [31:0] mem_pc;
     wire [31:0] mem_inst;
@@ -1736,6 +1805,9 @@ module core #
     assign mem_pref_refetch = mem_reg[250];
     assign mem_invtlb_valid = mem_reg[251];
 
+    assign mem_op_cacop = mem_reg[252];
+    assign mem_cacop_inst = mem_reg[253];
+
     // wb stage
     wire out_allow = 1;
 
@@ -1803,6 +1875,8 @@ module core #
             wb_reg[274] <= mem_ex_pme;
             wb_reg[275] <= mem_pref_refetch;
             wb_reg[276] <= mem_invtlb_valid;
+
+            wb_reg[277] <= mem_op_cacop;
         end
     end
     assign validout = wb_valid && wb_ready_go ; // not defined
@@ -1854,6 +1928,8 @@ module core #
     wire wb_ex_pme;
     wire wb_pref_refetch;
     wire wb_invtlb_valid;
+
+    wire wb_op_cacop;
 
     assign wb_pc = wb_reg[31:0];
     assign wb_inst = wb_reg[63:32];
@@ -1908,4 +1984,6 @@ module core #
 
     assign wb_pref_refetch = wb_reg[275] & wb_valid;
     assign wb_invtlb_valid = wb_reg[276];
+
+    assign wb_op_cacop = wb_reg[277];
 endmodule
