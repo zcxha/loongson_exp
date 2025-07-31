@@ -66,6 +66,7 @@ module mycpu_top (
 	wire [1:0] core_inst_sram_mat;
 	wire core_inst_sram_cacop_op;
 	wire [2:0] core_inst_sram_cacop_code;
+	wire [31:0] core_inst_sram_cacop_vaddr;
     wire core_inst_sram_addr_ok;
     wire core_inst_sram_data_ok;
     wire [31:0] core_inst_sram_rdata;
@@ -80,6 +81,7 @@ module mycpu_top (
 	wire [1:0] core_data_sram_mat;
 	wire core_data_sram_cacop_op;
 	wire [2:0] core_data_sram_cacop_code;
+	wire [31:0] core_data_sram_cacop_vaddr;
     wire core_data_sram_addr_ok;
     wire core_data_sram_data_ok;
     wire [31:0] core_data_sram_rdata;
@@ -101,7 +103,7 @@ module mycpu_top (
 			 .inst_sram_mat (core_inst_sram_mat),
 			 .inst_sram_cacop_op (core_inst_sram_cacop_op),
 			 .inst_sram_cacop_code (core_inst_sram_cacop_code),
-
+			 .inst_sram_cacop_vaddr (core_inst_sram_cacop_vaddr),
              // 
              .inst_sram_addr_ok (core_inst_sram_addr_ok),
              .inst_sram_data_ok (core_inst_sram_data_ok),
@@ -119,6 +121,7 @@ module mycpu_top (
 			 .data_sram_mat (core_data_sram_mat),
 			 .data_sram_cacop_op (core_data_sram_cacop_op),
 			 .data_sram_cacop_code (core_data_sram_cacop_code),
+			 .data_sram_cacop_vaddr (core_data_sram_cacop_vaddr),
              // 
              .data_sram_addr_ok (core_data_sram_addr_ok),
              .data_sram_data_ok (core_data_sram_data_ok),
@@ -145,7 +148,7 @@ module mycpu_top (
 	wire ret_last;
 	wire [31:0] ret_data;
 	
-	cache i_cache(
+	icache i_cache(
 		.clk       	(aclk        ),
 		.resetn    	(aresetn     ),
 		.valid     	(core_inst_sram_req      ),
@@ -157,7 +160,8 @@ module mycpu_top (
 		.wdata     	(core_inst_sram_wdata      ),
 		.mat		(core_inst_sram_mat		   ),
 		.cacop_op   (core_inst_sram_cacop_op   ),
-		.cacop_code (core_inst_sram_cacop_code ), 
+		.cacop_code (core_inst_sram_cacop_code ),
+		.cacop_vaddr (core_inst_sram_cacop_vaddr), 
 
 		.addr_ok   	(core_inst_sram_addr_ok    ),
 		.data_ok   	(core_inst_sram_data_ok    ),
@@ -206,6 +210,7 @@ module mycpu_top (
 		.mat		(core_data_sram_mat		   ),
 		.cacop_op   (core_data_sram_cacop_op   ),
 		.cacop_code (core_data_sram_cacop_code ),
+		.cacop_vaddr (core_data_sram_cacop_vaddr),
 		.addr_ok   	(core_data_sram_addr_ok    ),
 		.data_ok   	(core_data_sram_data_ok    ),
 		.rdata     	(core_data_sram_rdata      ),

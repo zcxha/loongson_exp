@@ -277,7 +277,7 @@ module cache(
     /*------MISS Buffer------*/
     reg replace_way;
     reg [127:0] miss_buffer_wdata;
-    wire [127:0] next_data = {miss_buffer_wdata[127:32],ret_data};
+    wire [127:0] next_data = {ret_data,miss_buffer_wdata[95:0]};
     reg [1:0] n_ret_32; // AXI总线返回了几个32位数据
     always @(posedge clk) begin
         if (~resetn) begin
@@ -299,7 +299,7 @@ module cache(
                     if(ret_last)
                         miss_buffer_wdata <= next_data;
                     else
-                        miss_buffer_wdata <= next_data << 32;
+                        miss_buffer_wdata <= next_data >> 32;
                 end
             end
         end

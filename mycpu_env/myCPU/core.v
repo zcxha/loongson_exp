@@ -17,7 +17,7 @@ module core #
 		output wire [1:0]  inst_sram_mat,
         output wire 	   inst_sram_cacop_op,
         output wire [2:0]  inst_sram_cacop_code,
-        output wire [31:0] inst_sram_vaddr,
+        output wire [31:0] inst_sram_cacop_vaddr,
         input  wire		   inst_sram_addr_ok, // 该次请求地址传输OK 读：地址被接收 写：地址和数据被接收
         input  wire		   inst_sram_data_ok, // 该次请求的数据传输OK 读：数据返回 写：数据写入完成
         input  wire [31:0] inst_sram_rdata,
@@ -33,7 +33,7 @@ module core #
         output wire [1:0]  data_sram_mat,
         output wire        data_sram_cacop_op,
         output wire [2:0]  data_sram_cacop_code,
-        output wire [31:0] data_sram_vaddr,
+        output wire [31:0] data_sram_cacop_vaddr,
         input  wire        data_sram_addr_ok,
         input  wire        data_sram_data_ok,
         input  wire [31:0] data_sram_rdata,
@@ -823,20 +823,21 @@ module core #
 
 
     assign cacop_op = ex_op_cacop;
-    assign cacop_code[0] = ex_op_cacop[4:3]==2'b00;
-    assign cacop_code[1] = ex_op_cacop[4:3]==2'b01;
-    assign cacop_code[2] = ex_op_cacop[4:3]==2'b10;
+	assign cacop_va = EX_result;
+    assign cacop_code[0] = ex_code_cacop[4:3]==2'b00;
+    assign cacop_code[1] = ex_code_cacop[4:3]==2'b01;
+    assign cacop_code[2] = ex_code_cacop[4:3]==2'b10;
 
-    assign cacop_inst = ex_op_cacop[2:0]==3'b000;
-    assign cacop_data = ex_op_cacop[2:0]==3'b001;
+    assign cacop_inst = ex_code_cacop[2:0]==3'b000;
+    assign cacop_data = ex_code_cacop[2:0]==3'b001;
 
     assign data_sram_cacop_op = cacop_data & cacop_op;
     assign data_sram_cacop_code = cacop_code;
-    assign data_sram_vaddr = cacop_va;
+    assign data_sram_cacop_vaddr = cacop_va;
 
     assign inst_sram_cacop_op = cacop_inst & cacop_op;
     assign inst_sram_cacop_code = cacop_code;
-    assign inst_sram_vaddr = cacop_va;
+    assign inst_sram_cacop_vaddr = cacop_va;
 
 
 
@@ -1547,7 +1548,7 @@ module core #
     wire ex_op_load;
 
     wire ex_op_cacop;
-    wire ex_code_cacop;
+    wire [4:0] ex_code_cacop;
 
     assign ex_mul_signed = ex_reg[215];
     assign ex_mul_hres = ex_reg[216];
