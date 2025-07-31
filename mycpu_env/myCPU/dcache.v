@@ -1,4 +1,4 @@
-module cache(
+module dcache(
         input wire clk,
         input wire resetn,
 
@@ -219,7 +219,8 @@ module cache(
     wire addr_overlap = w_state==WRITE && !op && tag==reg_tag && index==w_index && offset[3:2]==w_bank;
     assign addr_ok = (m_state==IDLE&&valid || (!cacop_op&&reg_mat==2'b01&&m_state==LOOKUP&&cache_hit&&valid&&!wr_rd_relate))&&!addr_overlap;
     assign data_ok = (reg_cacop_op&&reg_cacop_code[0]) ? m_state==LOOKUP :
-           (reg_cacop_op&&(reg_cacop_code[1]||reg_cacop_code[2])) ? (m_state==REFILL&&refill_write_en) :
+           (reg_cacop_op&&(reg_cacop_code[1])) ? (m_state==REFILL&&refill_write_en) :
+           (reg_cacop_op&&reg_cacop_code[2]) ? (m_state==REFILL&&refill_write_en || m_state==LOOKUP&&!cache_hit) :
            (m_state==LOOKUP&&cache_hit
             || m_state==REFILL&&ret_valid&&n_ret_32==reg_bank)&&reg_mat==2'b01
            || (reg_mat==2'b00&&m_state==REFILL&&ret_valid&&ret_last || reg_mat==2'b00&&m_state==REFILL&&reg_op&&wr_rdy);

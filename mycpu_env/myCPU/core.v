@@ -14,7 +14,7 @@ module core #
         output wire [3:0]  inst_sram_offset, // offset = vaddr[3:0]
         output wire [3:0]  inst_sram_wstrb, // 该次字节写使能
         output wire [31:0] inst_sram_wdata, //
-		output wire [1:0]  inst_sram_mat,
+        output wire [1:0]  inst_sram_mat,
         output wire 	   inst_sram_cacop_op,
         output wire [2:0]  inst_sram_cacop_code,
         output wire [31:0] inst_sram_cacop_vaddr,
@@ -366,13 +366,13 @@ module core #
 
 
     assign inst_sram_wr = 0;
-	assign inst_sram_mat = 2'b01;
+    assign inst_sram_mat = 2'b01;
     // assign inst_sram_size = 2'h2;
     assign inst_sram_wstrb    = 4'b0;
     // assign inst_sram_addr  = inst_sram_paddr; // 发生取指地址错时将PC置默认值
-    assign inst_sram_index = inst_sram_vaddr[11:4];
-    assign inst_sram_tag = inst_sram_paddr[31:12];
-    assign inst_sram_offset = inst_sram_vaddr[3:0];
+    assign inst_sram_index = ex_valid&&cacop_op&&cacop_inst ? data_sram_vaddr[11:4] : inst_sram_vaddr[11:4]; // 用的都是EX_result 所以使用data vaddr
+    assign inst_sram_tag = ex_valid&&cacop_op&&cacop_inst ? inst_sram_paddr[31:12] : inst_sram_paddr[31:12];
+    assign inst_sram_offset = ex_valid&&cacop_op&&cacop_inst ? data_sram_vaddr[3:0] : inst_sram_vaddr[3:0];
     assign inst_sram_wdata = 32'b0;
 
     /*------IF------*/
@@ -823,7 +823,7 @@ module core #
 
 
     assign cacop_op = ex_op_cacop;
-	assign cacop_va = EX_result;
+    assign cacop_va = EX_result;
     assign cacop_code[0] = ex_code_cacop[4:3]==2'b00;
     assign cacop_code[1] = ex_code_cacop[4:3]==2'b01;
     assign cacop_code[2] = ex_code_cacop[4:3]==2'b10;
@@ -1623,7 +1623,7 @@ module core #
     wire mem_ready_go;
     wire mem_to_wb_valid;
 
-    assign mem_ready_go = !waiting_for_data && (!waiting_for_inst&&mem_op_cacop&&mem_cacop_inst);
+    assign mem_ready_go = mem_op_cacop&&mem_cacop_inst ? !waiting_for_inst : !waiting_for_data;
     assign mem_allowin = !mem_valid || mem_ready_go && wb_allowin;
     assign mem_to_wb_valid = mem_valid && mem_ready_go;
     always @(posedge clk) begin
