@@ -252,11 +252,11 @@ module core #
     // assign inst_sram_req = (op_br_compare && ex_valid ? br_valid : 1) && if_allowin && resetn;
 
     assign seq_pc       = ~if_allowin ? pc : pc + 32'h4;
-    assign nextpc = (wb_has_exception || wb_id_ertn_flush || wb_pref_refetch) ? ( {32{wb_has_exception}} & wb_ex_entry | {32{wb_id_ertn_flush}}   & wb_ertn_pc | {32{wb_pref_refetch}} & wb_pc) :
+    assign nextpc = wb_valid&&(wb_has_exception || wb_id_ertn_flush || wb_pref_refetch) ? ( {32{wb_has_exception}} & wb_ex_entry | {32{wb_id_ertn_flush}}   & wb_ertn_pc | {32{wb_pref_refetch}} & wb_pc) :
            (br_taken_cancel) ? br_target :
            seq_pc;
     assign pref_adef	= ((pc & 2'b11) != 2'b00);
-
+	/*------ 决定下一条访问指令 ------*/
     reg br_cancel_inst;
     reg exception_cancel_flag;
     reg [31:0] cached_npc;
@@ -287,7 +287,7 @@ module core #
     end
 
     reg waiting_for_inst;
-
+	/*------ 决定当前访问指令 ------*/
     always @(posedge clk) begin
         if (reset) begin
             waiting_for_inst <= 0;
@@ -669,6 +669,14 @@ module core #
                         || (ex_valid && ex_inst_csr && data_related_ex)
                         || (mem_valid && mem_inst_csr && data_related_mem));
 
+    wire id_after_has_flush;
+    wire id_has_exception = id_pref_adef | id_pref_tlbr | id_pref_pif | id_pref_ppi | id_pref_refetch;
+
+    assign id_after_has_flush = (id_valid & id_has_exception)
+           | (mem_has_exception&mem_valid) | (wb_has_exception&wb_valid) | (ex_has_exception&ex_valid)
+           | (mem_pref_refetch&mem_valid) | (wb_pref_refetch&wb_valid) | (ex_pref_refetch&ex_valid)
+           | (ex_valid && ex_id_ertn_flush) | (mem_valid && mem_id_ertn_flush) | (wb_id_ertn_flush&&wb_valid) | exception_cancel_flag;
+
     assign rj_eq_rd = (rj_value == rkd_value);
     assign rj_less_rd = ($signed(rj_value) < $signed(rkd_value));
     assign rj_uless_rd = ($unsigned(rj_value) < $unsigned(rkd_value));
@@ -681,7 +689,7 @@ module core #
                           || inst_jirl
                           || inst_bl
                           || inst_b
-                      ) && valid && br_valid;
+                      ) && valid && br_valid && !id_after_has_flush;
     assign br_target = (inst_beq || inst_bne || inst_blt || inst_bge || inst_bltu || inst_bgeu || inst_bl || inst_b) ? (id_pc + br_offs) :
            /*inst_jirl*/ (rj_value + jirl_offs);
 
@@ -689,6 +697,10 @@ module core #
     assign alu_src2 = src2_is_imm ? imm : rkd_value;
 
     /*------EX------*/
+
+    wire ex_after_has_flush = (mem_has_exception&mem_valid) | (wb_has_exception&wb_valid) | (ex_has_exception&ex_valid)
+         | (mem_pref_refetch&mem_valid) | (wb_pref_refetch&wb_valid) | (ex_pref_refetch&ex_valid)
+         | (ex_valid && ex_id_ertn_flush) | (mem_valid && mem_id_ertn_flush) | (wb_id_ertn_flush&&wb_valid) | exception_cancel_flag;
 
     alu u_alu(
             .alu_op     (ex_alu_op    ),
@@ -715,10 +727,13 @@ module core #
     wire [31:0] div_r;
     wire div_complete;
 
+    wire exceptioned_div_enable = ex_div_enable &
+         ~ex_after_has_flush;
+
     div u_div(
             .div_clk		(clk		),
             .resetn			(resetn			),
-            .div			(ex_div_enable & ~(mem_has_exception | wb_has_exception | ex_has_exception | mem_pref_refetch | wb_pref_refetch | ex_pref_refetch)			),
+            .div			(exceptioned_div_enable			),
             .div_signed		(ex_div_signed				),
             .x				(ex_alu_src1		),
             .y				(ex_alu_src2			),
@@ -729,7 +744,7 @@ module core #
     wire [31:0] div_result;
     assign div_result = ex_div_res_remainder ? div_r : div_s;
 
-	// timer
+    // timer
     wire [31:0] timer_value;
     timer u_timer(
               .clk	(clk	),
@@ -877,15 +892,15 @@ module core #
     // 异常  tlbr > pi* > ppi > pme
     wire data_use_tlb = out_crmd_pg && !data_hit_dmw0 && !data_hit_dmw1;
     wire ex_tlbr = cacop_op&&(cacop_code[0]||cacop_code[1]) ? 0 :
-         (out_crmd_pg ? !s1_found && (ex_mem_op||cacop_op) && data_use_tlb : 0);
+         (out_crmd_pg ? !s1_found && (ex_mem_op||ex_op_cacop) && data_use_tlb : 0);
     wire ex_pil = cacop_op&&(cacop_code[0]||cacop_code[1]) ? 0 :
-         (out_crmd_pg ? !s1_v && ex_op_load && !ex_tlbr && data_use_tlb: 0);
+         (out_crmd_pg ? !s1_v && (ex_op_load || ex_op_cacop) && !ex_tlbr && data_use_tlb: 0);
     wire ex_pis = cacop_op&&(cacop_code[0]||cacop_code[1]) ? 0 :
          (out_crmd_pg ? !s1_v && ex_op_store && !ex_tlbr && data_use_tlb: 0);
     wire ex_ppi = cacop_op&&(cacop_code[0]||cacop_code[1]) ? 0 :
-         (out_crmd_pg ? (out_crmd_plv > s1_plv) && (ex_mem_op||cacop_op) && !ex_tlbr && !ex_pil && !ex_pis && data_use_tlb: 0);
+         (out_crmd_pg ? (out_crmd_plv > s1_plv) && (ex_mem_op || ex_op_cacop) && !ex_tlbr && !ex_pil && !ex_pis && data_use_tlb: 0);
     wire ex_pme = cacop_op&&(cacop_code[0]||cacop_code[1]) ? 0 :
-         (out_crmd_pg ? ex_op_store && !s1_d && !ex_tlbr && !ex_pil && !ex_pis && !ex_ppi && data_use_tlb: 0);
+         (out_crmd_pg ? (ex_op_store || ex_op_cacop) && !s1_d && !ex_tlbr && !ex_pil && !ex_pis && !ex_ppi && data_use_tlb: 0);
     wire ex_has_addr_exception = ex_tlbr | ex_pil | ex_pis | ex_ppi | ex_pme;
 
     // MUX
@@ -900,7 +915,8 @@ module core #
            s1_mat;
 
     // assign data_sram_req = ex_mem_op && mem_allowin;
-    assign data_sram_wr = (ex_op_st_b | ex_op_st_h | ex_op_st_w) && (!wb_pref_refetch && !mem_pref_refetch && !ex_pref_refetch && !wb_has_exception && !mem_has_exception && !ex_has_exception) && ex_valid; // 如果其或者其后的流水段发生异常，则停止写ram
+    // wire ex_mem_wb_has_flush_event = !wb_pref_refetch && !mem_pref_refetch && !ex_pref_refetch && !wb_has_exception && !mem_has_exception && !ex_has_exception && !ex_id_ertn_flush && !mem_id_ertn_flush && !wb_id_ertn_flush;
+    assign data_sram_wr = (ex_op_st_b | ex_op_st_h | ex_op_st_w) && (!ex_after_has_flush) && ex_valid; // 如果其或者其后的流水段发生异常，则停止写ram
     assign data_sram_size = (ex_mem_byte) ? 2'b00 :
            (ex_mem_half) ? 2'b01 : // 写传输size=4靠写掩码写位 读定义传输size
            2'b10;
@@ -918,8 +934,8 @@ module core #
             data_sram_req <= 0;
             waiting_for_data <= 0;
         end
-        if (ex_valid && (ex_mem_op||(ex_op_cacop&&cacop_data)) && mem_allowin && !waiting_for_data && !ex_has_addr_exception) begin // TODO:不发出产生地址异常的请求
-            data_sram_req <= 1;
+        if (ex_valid && (ex_mem_op||(ex_op_cacop&&cacop_data)) && mem_allowin && !waiting_for_data && !ex_has_addr_exception) begin
+            data_sram_req <= 1;// TODO: 如果是写请求且该指令无效，则EX处作为读请求等待
         end
         if (data_sram_addr_ok && data_sram_req) begin
             data_sram_req <= 0;
@@ -1167,10 +1183,11 @@ module core #
 
                 // output
                 .csr_rvalue	(wb_csr_rvalue),
+
                 /***硬件交互接口***/
                 // input
                 .wb_pc(wb_pc),
-                .wb_ex(wb_has_exception),
+                .wb_ex(wb_has_exception&&wb_valid),
                 .wb_ecode(wb_ecode),
                 .wb_esubcode(wb_esubcode),
                 .wb_vaddr(wb_vaddr),
@@ -1183,6 +1200,7 @@ module core #
                 .has_int(wb_has_int), // 送往ID的中断有效信号
                 .ertn_pc(wb_ertn_pc), // 送往取指的ertn返回的指令地址
 
+                /***给MMU的连线***/
                 .in_tlbidx_index(in_tlbidx_index),
                 .in_tlbidx_ne(in_tlbidx_ne),
                 .in_asid_asid(in_asid_asid),
@@ -1212,7 +1230,7 @@ module core #
            wb_res_from_mem ? wb_mem_result :
            wb_EX_result;
 
-    assign rf_we    = wb_gr_we && valid && wb_valid && ~wb_has_exception && ~wb_pref_refetch;
+    assign rf_we    = wb_gr_we && valid && wb_valid && ~wb_has_exception && ~wb_pref_refetch && ~wb_id_ertn_flush;
     assign rf_waddr = wb_dest;
     assign rf_wdata = final_result;
 
@@ -1404,7 +1422,7 @@ module core #
     assign ex_ready_go =ex_valid ?( ex_div_enable ? div_complete :
                                     ex_op_cacop && cacop_inst ? inst_sram_addr_ok && inst_sram_req || ex_has_addr_exception:
                                     ex_op_cacop && cacop_data ? data_sram_addr_ok && data_sram_req || ex_has_addr_exception:
-                                    ex_mem_op ? data_sram_req && data_sram_addr_ok || ex_has_addr_exception :
+                                    ex_mem_op ? data_sram_req && data_sram_addr_ok || ex_has_addr_exception : // TODO: 如果是写请求且该指令无效，则EX处作为读请求等待
                                     ex_tlbsrch_op ? ~ex_srch_mem_wr :
                                     1) : 1; // todo
     assign ex_allowin = !ex_valid || ex_ready_go && mem_allowin;
