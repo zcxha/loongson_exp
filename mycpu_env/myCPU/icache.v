@@ -1,4 +1,4 @@
-module cache(
+module icache(
         input wire clk,
         input wire resetn,
 

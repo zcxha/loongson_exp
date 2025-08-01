@@ -197,7 +197,7 @@ module mycpu_top (
 	wire [127:0] dcwr_data;
 
 	wire dcwr_rdy;
-	cache d_cache(
+	dcache d_cache(
 		.clk       	(aclk        ),
 		.resetn    	(aresetn     ),
 		.valid     	(core_data_sram_req      ),

@@ -670,7 +670,6 @@ module core #
                         || (mem_valid && mem_inst_csr && data_related_mem));
 
     wire id_after_has_flush;
-    wire id_has_exception = id_pref_adef | id_pref_tlbr | id_pref_pif | id_pref_ppi | id_pref_refetch;
 
     assign id_after_has_flush = (id_valid & id_has_exception)
            | (mem_has_exception&mem_valid) | (wb_has_exception&wb_valid) | (ex_has_exception&ex_valid)
@@ -773,7 +772,7 @@ module core #
            ex_op_st_h ? (EX_result[1:0]==2'b00 ? 4'b0011 :
                          4'b1100) :
            {4{ex_op_st_w}};
-    assign id_has_exception = id_valid & (id_pref_adef | id_ine | id_break | id_syscall | id_has_int | id_ertn_flush | id_pref_tlbr | id_pref_pif | id_pref_ppi);
+    assign id_has_exception = id_valid & (id_ine | id_break | id_syscall | id_has_int | id_ertn_flush | id_pref_tlbr | id_pref_pif | id_pref_ppi | id_pref_adef | id_pref_refetch);
     assign mem_has_exception = mem_valid & (mem_pref_adef | mem_ex_ale | mem_id_ine | mem_id_break | mem_id_syscall | mem_id_has_int | mem_id_ertn_flush | mem_pref_tlbr | mem_pref_pif | mem_pref_ppi | mem_ex_tlbr | mem_ex_pil | mem_ex_pis | mem_ex_ppi | mem_ex_pme);
     assign ex_has_exception = ex_valid & (ex_ale | ex_pref_adef | ex_id_ine | ex_id_break | ex_id_syscall | ex_id_has_int | ex_id_ertn_flush | ex_pref_tlbr | ex_pref_pif | ex_pref_ppi | ex_tlbr | ex_pil | ex_pis | ex_ppi | ex_pme);
 
