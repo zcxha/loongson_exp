@@ -726,7 +726,7 @@ module core #
     wire [31:0] div_r;
     wire div_complete;
 
-    wire exceptioned_div_enable = ex_div_enable &
+    wire exceptioned_div_enable = ex_valid & ex_div_enable &
          ~ex_after_has_flush;
 
     div u_div(
@@ -1418,12 +1418,12 @@ module core #
     wire ex_to_mem_valid;
 
     // ex stage
-    assign ex_ready_go =ex_valid ?( ex_div_enable ? div_complete :
+    assign ex_ready_go =( ex_div_enable ? div_complete :
                                     ex_op_cacop && cacop_inst ? inst_sram_addr_ok && inst_sram_req || ex_has_addr_exception:
                                     ex_op_cacop && cacop_data ? data_sram_addr_ok && data_sram_req || ex_has_addr_exception:
                                     ex_mem_op ? data_sram_req && data_sram_addr_ok || ex_has_addr_exception : // TODO: 如果是写请求且该指令无效，则EX处作为读请求等待
                                     ex_tlbsrch_op ? ~ex_srch_mem_wr :
-                                    1) : 1; // todo
+                                    1); // todo
     assign ex_allowin = !ex_valid || ex_ready_go && mem_allowin;
     assign ex_to_mem_valid = ex_valid && ex_ready_go;
 
