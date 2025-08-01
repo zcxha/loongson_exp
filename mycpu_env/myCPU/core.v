@@ -252,22 +252,23 @@ module core #
     // assign inst_sram_req = (op_br_compare && ex_valid ? br_valid : 1) && if_allowin && resetn;
 
     assign seq_pc       = ~if_allowin ? pc : pc + 32'h4;
-    assign nextpc = (wb_valid && (wb_has_exception || wb_id_ertn_flush || wb_pref_refetch)) ? ( {32{wb_has_exception}} & wb_ex_entry | {32{wb_id_ertn_flush}}   & wb_ertn_pc | {32{wb_pref_refetch}} & wb_pc) :
+    assign nextpc = (wb_has_exception || wb_id_ertn_flush || wb_pref_refetch) ? ( {32{wb_has_exception}} & wb_ex_entry | {32{wb_id_ertn_flush}}   & wb_ertn_pc | {32{wb_pref_refetch}} & wb_pc) :
            (br_taken_cancel) ? br_target :
            seq_pc;
     assign pref_adef	= ((pc & 2'b11) != 2'b00);
 
-    reg cancel_inst;
+    reg br_cancel_inst;
     reg exception_cancel_flag;
     reg [31:0] cached_npc;
     reg [31:0] cached_inst;
     always @(posedge clk) begin
         if (reset) begin
-            cancel_inst <= 0;
+            br_cancel_inst <= 0;
             exception_cancel_flag <= 0;
             cached_npc <= 32'b0;
         end
-        if (wb_has_exception || wb_id_ertn_flush || wb_pref_refetch) begin
+
+        if (wb_valid&&(wb_has_exception || wb_id_ertn_flush || wb_pref_refetch)&&!exception_cancel_flag) begin
             exception_cancel_flag <= 1;
             cached_npc <= nextpc; // 异常处理程序入口
         end
@@ -275,12 +276,12 @@ module core #
             if (exception_cancel_flag) begin
                 exception_cancel_flag <= 0;
             end
-            else if (cancel_inst) begin
-                cancel_inst <= 0;
+            else if (br_cancel_inst) begin
+                br_cancel_inst <= 0;
             end
         end
         else if (br_taken_cancel) begin
-            cancel_inst <= 1;
+            br_cancel_inst <= 1;
             cached_npc <= nextpc; // 跳转目标
         end
     end
@@ -297,27 +298,21 @@ module core #
         if ((if_allowin && inst_sram_req == 0) && !waiting_for_inst ) begin
             if (exception_cancel_flag) begin
                 inst_sram_req <= 1;
-
                 pc <= cached_npc;
             end
-            else if (cancel_inst) begin
+            else if (br_cancel_inst) begin
                 inst_sram_req <= 1;
-
                 pc <= cached_npc;
             end
-            else if (!pref_has_exception || (inst_sram_cacop_op)) begin
+            else if (!pref_has_exception ) begin
                 inst_sram_req <= 1;
-				
                 pc <= nextpc;
             end
         end
-        else if (inst_sram_addr_ok && inst_sram_req && !(ex_op_cacop&&cacop_inst)) begin
+        else if (inst_sram_addr_ok && inst_sram_req) begin
             inst_sram_req <= 0;
             waiting_for_inst <= 1;
-		end else if (inst_sram_addr_ok && inst_sram_req && mem_op_cacop && mem_cacop_inst) begin
-			inst_sram_req <= 0;
-			waiting_for_inst <= 0;
-		end
+        end
         else if (inst_sram_data_ok && waiting_for_inst) begin
             waiting_for_inst <= 0;
             cached_inst <= inst_sram_rdata;
@@ -487,7 +482,7 @@ module core #
 
     assign inst_break = op_31_26_d[6'h00] & op_25_22_d[4'h0] & op_21_20_d[2'h2] & op_19_15_d[5'h14];
     assign inst_syscall = op_31_26_d[6'h00] & op_25_22_d[4'h0] & op_21_20_d[2'h2] & op_19_15_d[5'h16];
-    assign inst_ertn = op_31_26_d[6'h01] & op_25_22_d[4'h9] & op_21_20_d[2'h0] & op_19_15_d[5'h10] & op_14_10_d[5'h0e] & op_09_05_d[5'h00] & op_04_00_d[5'h00];
+    assign inst_ertn = op_31_26_d[6'h01] & op_25_22_d[4'h9] & op_21_20_d[2'h0] & op_19_15_d[5'h10] & op_14_10_d[5'h0e] & op_09_05_d[6'h00] & op_04_00_d[5'h00];
 
     assign inst_csrrd = op_31_26_d[6'h01] & ~inst[25] & ~inst[24] & op_09_05_d[5'h00];
     assign inst_csrwr = op_31_26_d[6'h01] & ~inst[25] & ~inst[24] & op_09_05_d[5'h01];
@@ -531,8 +526,9 @@ module core #
 
     assign id_syscall = inst_syscall;
     assign id_break = inst_break; // 系统调用和断点异常
-    assign id_has_int = wb_has_int;
     assign id_ertn_flush = inst_ertn;
+
+    assign id_has_int = wb_has_int;
 
     assign csr_mask = {32{inst_csrwr}} | {32{inst_csrxchg}} & rj_value;
     assign csr_we = inst_csrwr | inst_csrxchg;
@@ -615,7 +611,7 @@ module core #
            inst_pcaddu12i |
            inst_cacop;
 
-    //（其实 ex_forward表示前递alu结果，mem_forward表示前递内存读结果）
+    //（ex_forward表示前递alu结果，mem_forward表示前递内存读结果）
     assign ex_forward = inst_add_w | inst_sub_w | inst_slt |
            inst_sltu | inst_nor | inst_and | inst_or |
            inst_xor | inst_slli_w | inst_srli_w | inst_srai_w |
@@ -733,6 +729,7 @@ module core #
     wire [31:0] div_result;
     assign div_result = ex_div_res_remainder ? div_r : div_s;
 
+	// timer
     wire [31:0] timer_value;
     timer u_timer(
               .clk	(clk	),
@@ -841,11 +838,15 @@ module core #
     assign cacop_inst = ex_code_cacop[2:0]==3'b000;
     assign cacop_data = ex_code_cacop[2:0]==3'b001;
 
-    assign data_sram_cacop_op = cacop_data & cacop_op;
+    assign data_sram_cacop_op = cacop_data & cacop_op & !waiting_for_data & !waiting_for_inst & !ex_has_addr_exception &
+           !mem_ex_tlbr & !mem_ex_pil & !mem_ex_pis & !mem_ex_ppi & !mem_ex_pme
+           & !wb_ex_tlbr & !wb_ex_pil & !wb_ex_pis & !wb_ex_ppi & !wb_ex_pme;
     assign data_sram_cacop_code = cacop_code;
     assign data_sram_cacop_vaddr = cacop_va;
 
-    assign inst_sram_cacop_op = cacop_inst & cacop_op;
+    assign inst_sram_cacop_op = cacop_inst & cacop_op & !waiting_for_inst & !waiting_for_data & !ex_has_addr_exception &
+           !mem_ex_tlbr & !mem_ex_pil & !mem_ex_pis & !mem_ex_ppi & !mem_ex_pme
+           & !wb_ex_tlbr & !wb_ex_pil & !wb_ex_pis & !wb_ex_ppi & !wb_ex_pme;
     assign inst_sram_cacop_code = cacop_code;
     assign inst_sram_cacop_vaddr = cacop_va;
 
@@ -1117,7 +1118,7 @@ module core #
     wire [5:0] wb_ecode;
     wire wb_esubcode;
 
-    assign wb_has_exception = (wb_pref_adef | wb_ex_ale | wb_id_ine | wb_id_break | wb_id_syscall | wb_id_has_int | wb_pref_tlbr | wb_pref_pif | wb_pref_ppi | wb_ex_tlbr | wb_ex_pil | wb_ex_pis | wb_ex_ppi | wb_ex_pme) & wb_valid;
+    assign wb_has_exception = (wb_pref_adef | wb_ex_ale | wb_id_ine | wb_id_break | wb_id_syscall | wb_id_has_int | wb_pref_tlbr | wb_pref_pif | wb_pref_ppi | wb_ex_tlbr | wb_ex_pil | wb_ex_pis | wb_ex_ppi | wb_ex_pme);
     assign wb_ecode = {6{wb_pref_adef}} & `ECODE_ADE
            | {6{wb_ex_ale}} & `ECODE_ALE
            | {6{wb_id_ine}} & `ECODE_INE
@@ -1244,10 +1245,14 @@ module core #
     wire validin;
     wire pre_if_ready_go;
     wire to_fs_valid;
-    assign to_fs_valid = (inst_sram_req && inst_sram_addr_ok || (pref_has_exception)) && !exception_cancel_flag && !cancel_inst && (id_valid?!id_has_exception:1) && (ex_valid?!ex_has_exception:1) && (mem_valid?!mem_has_exception:1) && (wb_valid?!wb_has_exception&& !wb_id_ertn_flush && !wb_pref_refetch:1) ;
+
+    assign to_fs_valid =
+           ((inst_sram_req && inst_sram_addr_ok) || pref_has_exception) &&
+           !exception_cancel_flag &&
+           !br_cancel_inst;
 
     assign pre_if_ready_go = to_fs_valid;
-    assign validin = ~(wb_id_ertn_flush | wb_has_exception | wb_pref_refetch) & pre_if_ready_go ;
+    assign validin = to_fs_valid ;
 
     // if stage
     wire [31:0] data_in;
@@ -1265,15 +1270,7 @@ module core #
             if_reg <= 500'b0;
         end
         else if (if_allowin) begin
-            if ((wb_id_ertn_flush || wb_has_exception || wb_pref_refetch) && to_fs_valid) begin
-                if_valid <= 1'b0;
-            end
-            else if (br_taken_cancel) begin
-                if_valid <= 1'b0;
-            end
-            else begin
-                if_valid <= validin;
-            end
+            if_valid <= validin;
         end
 
         if (validin && if_allowin) begin
@@ -1347,16 +1344,19 @@ module core #
            ); // todo
     assign id_allowin = !id_valid || id_ready_go && ex_allowin;
     assign id_to_ex_valid = id_valid && id_ready_go;
+
+    wire id_exception_invalid = exception_cancel_flag||(wb_valid&&(wb_has_exception||wb_id_ertn_flush||wb_pref_refetch));
+
     always @(posedge clk) begin
         if (reset) begin
             id_valid <= 1'b0;
             id_reg <= 500'b0;
         end
         else if (id_allowin) begin
-            if (wb_id_ertn_flush | wb_has_exception | mem_has_exception | ex_has_exception | id_has_exception | exception_cancel_flag | wb_pref_refetch) begin
+            if (id_exception_invalid) begin
                 id_valid <= 1'b0;
             end
-            else if (br_taken_cancel || cancel_inst) begin // TODO: 只用cancel_inst
+            else if (br_taken_cancel||br_cancel_inst) begin
                 id_valid <= 1'b0; // 控制相关
             end
             else begin
@@ -1401,20 +1401,23 @@ module core #
     wire ex_to_mem_valid;
 
     // ex stage
-    assign ex_ready_go = ex_div_enable ? div_complete :
-           ex_op_cacop && cacop_inst ? inst_sram_addr_ok && inst_sram_req || ex_has_addr_exception:
-           ex_op_cacop && cacop_data ? data_sram_addr_ok && data_sram_req || ex_has_addr_exception:
-           ex_mem_op ? data_sram_req && data_sram_addr_ok || ex_has_addr_exception :
-           ex_tlbsrch_op ? ~ex_srch_mem_wr :
-           1; // todo
+    assign ex_ready_go =ex_valid ?( ex_div_enable ? div_complete :
+                                    ex_op_cacop && cacop_inst ? inst_sram_addr_ok && inst_sram_req || ex_has_addr_exception:
+                                    ex_op_cacop && cacop_data ? data_sram_addr_ok && data_sram_req || ex_has_addr_exception:
+                                    ex_mem_op ? data_sram_req && data_sram_addr_ok || ex_has_addr_exception :
+                                    ex_tlbsrch_op ? ~ex_srch_mem_wr :
+                                    1) : 1; // todo
     assign ex_allowin = !ex_valid || ex_ready_go && mem_allowin;
     assign ex_to_mem_valid = ex_valid && ex_ready_go;
+
+    wire ex_exception_invalid = exception_cancel_flag||(wb_valid&&(wb_has_exception||wb_id_ertn_flush||wb_pref_refetch));
+
     always @(posedge clk) begin
         if (reset) begin
             ex_valid <= 1'b0;
             ex_reg <= 500'b0;
         end
-        else if (wb_id_ertn_flush | wb_has_exception | wb_pref_refetch) begin
+        else if (ex_exception_invalid) begin
             ex_valid <= 1'b0;
         end
         else if (ex_allowin) begin
@@ -1636,12 +1639,15 @@ module core #
     assign mem_ready_go = mem_op_cacop&&mem_cacop_inst ? !waiting_for_inst : !waiting_for_data;
     assign mem_allowin = !mem_valid || mem_ready_go && wb_allowin;
     assign mem_to_wb_valid = mem_valid && mem_ready_go;
+
+    wire mem_exception_invalid = exception_cancel_flag||(wb_valid&&(wb_has_exception||wb_id_ertn_flush||wb_pref_refetch));
+
     always @(posedge clk) begin
         if (reset) begin
             mem_valid <= 1'b0;
             mem_reg <= 500'b0;
         end
-        else if (wb_id_ertn_flush | wb_has_exception | wb_pref_refetch) begin
+        else if (mem_exception_invalid) begin
             mem_valid <= 1'b0;
         end
         else if (mem_allowin) begin
@@ -1826,12 +1832,15 @@ module core #
     wire wb_ready_go;
     assign wb_ready_go = 1; // todo
     assign wb_allowin = !wb_valid || wb_ready_go && out_allow; // out allow = ?
+
+    wire wb_exception_invalid = exception_cancel_flag||(wb_valid&&(wb_has_exception||wb_id_ertn_flush||wb_pref_refetch));
+
     always @(posedge clk) begin
         if (reset) begin
             wb_valid <= 1'b0;
             wb_reg <= 500'b0;
         end
-        else if (wb_id_ertn_flush || wb_has_exception || wb_pref_refetch) begin
+        else if (wb_exception_invalid) begin
             wb_valid <= 1'b0;
         end
         else if (wb_allowin) begin
