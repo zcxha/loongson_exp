@@ -1419,8 +1419,8 @@ module core #
 
     // ex stage
     assign ex_ready_go =( ex_div_enable ? div_complete :
-                                    ex_op_cacop && cacop_inst ? inst_sram_addr_ok && inst_sram_req || ex_has_addr_exception:
-                                    ex_op_cacop && cacop_data ? data_sram_addr_ok && data_sram_req || ex_has_addr_exception:
+                                    ex_op_cacop && cacop_inst ? inst_sram_addr_ok && inst_sram_req && inst_sram_cacop_op || ex_has_addr_exception:
+                                    ex_op_cacop && cacop_data ? data_sram_addr_ok && data_sram_req && data_sram_cacop_op || ex_has_addr_exception:
                                     ex_mem_op ? data_sram_req && data_sram_addr_ok || ex_has_addr_exception : // TODO: 如果是写请求且该指令无效，则EX处作为读请求等待
                                     ex_tlbsrch_op ? ~ex_srch_mem_wr :
                                     1); // todo
